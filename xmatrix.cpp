@@ -9,8 +9,16 @@
 #include <time.h>
 
 #include <vector>
+#include <algorithm>
+
+constexpr int xmatrix_frame_interval = 20;
+constexpr int xmatrix_decay_rate = 10;
 
 typedef uint8_t byte;
+
+int xmatrix_rand() {
+  return std::rand();
+}
 
 struct cell_t {
   char32_t c = ' ';
@@ -185,7 +193,7 @@ private:
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
         cell_t& cell = new_content[index];
-        cell.bg = color_table[std::min(cell.diffuse / 2, 3)];
+        cell.bg = color_table[std::min(cell.diffuse / 3, 3)];
       }
     }
   }
@@ -204,24 +212,27 @@ public:
         std::size_t const index = y * cols + x;
         cell_t& cell = new_content[index];
         int const age = now - cell.time;
-        if (age / 5 > 9) {
+        int const stage = age / xmatrix_decay_rate;
+        if (stage > 9) {
           cell.c = ' ';
           continue;
         }
 
-        cell.level = std::max(10 - (age / 5 + age % 3), 0);
+        int stage_twinkle = stage;
+        if (stage < 8) stage_twinkle += xmatrix_rand() % 3;
+        cell.level = std::max(10 - stage_twinkle, 0);
         cell.fg = color_table[cell.level];
-        cell.bold = age / 5 < 5;
+        cell.bold = stage < 5;
 
         cell.diffuse += cell.level / 3;
         add_diffuse(x - 1, y, cell.level / 3 - 1);
         add_diffuse(x + 1, y, cell.level / 3 - 1);
         add_diffuse(x, y - 1, cell.level / 3 - 1);
         add_diffuse(x, y + 1, cell.level / 3 - 1);
-        add_diffuse(x - 1, y - 1, cell.level / 3 - 2);
-        add_diffuse(x + 1, y - 1, cell.level / 3 - 2);
-        add_diffuse(x - 1, y + 1, cell.level / 3 - 2);
-        add_diffuse(x + 1, y + 1, cell.level / 3 - 2);
+        add_diffuse(x - 1, y - 1, cell.level / 5 - 1);
+        add_diffuse(x + 1, y - 1, cell.level / 5 - 1);
+        add_diffuse(x - 1, y + 1, cell.level / 5 - 1);
+        add_diffuse(x + 1, y + 1, cell.level / 5 - 1);
       }
     }
 
@@ -242,6 +253,10 @@ void trap_sigint(int sig) {
   std::raise(sig);
 }
 
+struct pos_t {
+  int x, y;
+};
+
 int main() {
   struct winsize ws;
   ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
@@ -255,22 +270,40 @@ int main() {
   buff.new_content.resize(buff.cols * buff.rows);
   buff.redraw();
 
-  // 16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231
-  for (;;) {
-    int const x = std::rand() % buff.cols;
-    int const y = std::rand() % buff.rows;
-    int const c = L'ｱ' + std::rand() % 50;
 
-    auto& cell = buff.new_content[y * buff.cols + x];
-    cell.c = c;
-    cell.time = buff.now;
+  std::vector<pos_t> threads;
+
+  for (;;) {
+    // remove out of range threads
+    threads.erase(
+      std::remove_if(threads.begin(), threads.end(),
+        [] (auto const& pos) -> bool { return pos.y >= buff.rows; }),
+      threads.end());
+
+    // add new threads
+    if (buff.now % (1 + 500 / buff.cols) == 0) {
+      pos_t pos;
+      pos.x = xmatrix_rand() % buff.cols;
+      pos.y = 0;
+      threads.push_back(pos);
+    }
+
+    // grow threads
+    if (buff.now % 2 == 0) {
+      for (pos_t& pos : threads) {
+        auto& cell = buff.new_content[pos.y * buff.cols + pos.x];
+        cell.time = buff.now;
+        cell.c = L'ｱ' + xmatrix_rand() % 50;
+        pos.y++;
+      }
+    }
 
     buff.resolve();
     buff.update();
 
     struct timespec tv;
     tv.tv_sec = 0;
-    tv.tv_nsec = 10 * 1000000;
+    tv.tv_nsec = xmatrix_frame_interval * 1000000;
     nanosleep(&tv, NULL);
   }
 
