@@ -4,4 +4,4 @@
 all: xmatrix.exe
 
 xmatrix.exe: xmatrix.cpp
-	$(CXX) -o $@ $<
+	$(CXX) -std=c++17 -o $@ $<

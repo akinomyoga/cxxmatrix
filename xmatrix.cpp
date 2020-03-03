@@ -10,14 +10,22 @@
 
 #include <vector>
 #include <algorithm>
+#include <iterator>
+#include <random>
+#include <limits>
 
 constexpr int xmatrix_frame_interval = 20;
 constexpr int xmatrix_decay_rate = 10;
+constexpr int xmatrix_cell_power_max = 4;
 
 typedef uint8_t byte;
 
-int xmatrix_rand() {
-  return std::rand();
+std::uint32_t xmatrix_rand() {
+  static std::random_device seed_gen;
+  static std::mt19937 engine(seed_gen());
+  static std::uniform_int_distribution<std::uint32_t> dist(0, std::numeric_limits<std::uint32_t>::max());
+  return dist(engine);
+  //return std::rand();
 }
 
 struct cell_t {
@@ -26,7 +34,8 @@ struct cell_t {
   byte bg = 16;
   bool bold = false;
 
-  int time = 0;
+  int birth = 0;
+  int power = 0;
   int level = 0;
   int diffuse = 0;
 };
@@ -211,18 +220,27 @@ public:
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
         cell_t& cell = new_content[index];
-        int const age = now - cell.time;
-        int const stage = age / xmatrix_decay_rate;
-        if (stage > 9) {
+        if (cell.c == ' ') continue;
+
+        int const age = now - cell.birth;
+        int const level1 = 10 - age / xmatrix_decay_rate;
+        if (level1 < 1) {
           cell.c = ' ';
+          cell.level = 0;
           continue;
         }
 
-        int stage_twinkle = stage;
-        if (stage < 8) stage_twinkle += xmatrix_rand() % 3;
-        cell.level = std::max(10 - stage_twinkle, 0);
+        int stage_twinkle = 1 + (level1 - 1) * cell.power / xmatrix_cell_power_max;
+        if (stage_twinkle > 2)
+          stage_twinkle -= xmatrix_rand() % 3;
+        else if (stage_twinkle == 2)
+          stage_twinkle = xmatrix_rand() % 4 ? 2 : 1;
+        else
+          stage_twinkle = xmatrix_rand() % 6 ? 1 : 0;
+
+        cell.level = std::max(stage_twinkle, 0);
         cell.fg = color_table[cell.level];
-        cell.bold = stage < 5;
+        cell.bold = level1 > 5;
 
         cell.diffuse += cell.level / 3;
         add_diffuse(x - 1, y, cell.level / 3 - 1);
@@ -253,8 +271,9 @@ void trap_sigint(int sig) {
   std::raise(sig);
 }
 
-struct pos_t {
+struct thread_t {
   int x, y;
+  int age, speed;
 };
 
 int main() {
@@ -271,7 +290,8 @@ int main() {
   buff.redraw();
 
 
-  std::vector<pos_t> threads;
+  std::vector<thread_t> threads;
+  byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
 
   for (;;) {
     // remove out of range threads
@@ -281,18 +301,21 @@ int main() {
       threads.end());
 
     // add new threads
-    if (buff.now % (1 + 500 / buff.cols) == 0) {
-      pos_t pos;
+    if (buff.now % (1 + 300 / buff.cols) == 0) {
+      thread_t pos;
       pos.x = xmatrix_rand() % buff.cols;
       pos.y = 0;
+      pos.age = 0;
+      pos.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
       threads.push_back(pos);
     }
 
     // grow threads
-    if (buff.now % 2 == 0) {
-      for (pos_t& pos : threads) {
+    for (thread_t& pos : threads) {
+      if (pos.age++ % pos.speed == 0) {
         auto& cell = buff.new_content[pos.y * buff.cols + pos.x];
-        cell.time = buff.now;
+        cell.power = xmatrix_cell_power_max * 2 / pos.speed;
+        cell.birth = buff.now;
         cell.c = L'ｱ' + xmatrix_rand() % 50;
         pos.y++;
       }
