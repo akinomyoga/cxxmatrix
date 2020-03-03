@@ -19,6 +19,8 @@ struct cell_t {
   bool bold = false;
 
   int time = 0;
+  int level = 0;
+  int diffuse = 0;
 };
 
 struct buffer {
@@ -79,15 +81,9 @@ private:
       if (x != px) {
         if (x == 0) {
           std::putc('\r', file);
-        } else if (x == px - 1) {
-          std::putc('\b', file);
-        } else if (x == px - 2) {
-          std::putc('\b', file);
-          std::putc('\b', file);
-        } else if (x == px - 3) {
-          std::putc('\b', file);
-          std::putc('\b', file);
-          std::putc('\b', file);
+        } else if (px - 3 <= x && x < px) {
+          while (x < px--)
+            std::putc('\b', file);
         } else {
           std::fprintf(file, "\x1b[%dG", x + 1);
         }
@@ -96,20 +92,21 @@ private:
       return;
     }
 
-    if (x <= px && py < y && (x == 0 ? 1 : px - x) + (y - py) <= (x == 0 || x == px ? 3 : 5)) {
-      if (x != px) {
-        if (x == 0) {
-          std::putc('\r', file);
-          px = 0;
-        } else {
-          while (x < px--)
-            std::putc('\b', file);
-        }
-      }
-      while (py++ < y)
-        std::putc('\n', file);
-      return;
-    }
+    // \v が思うように動いていない?
+    // if (x <= px && py < y && (x == 0 ? 1 : px - x) + (y - py) <= (x == 0 || x == px ? 3 : 5)) {
+    //   if (x != px) {
+    //     if (x == 0) {
+    //       std::putc('\r', file);
+    //       px = 0;
+    //     } else {
+    //       while (x < px--)
+    //         std::putc('\b', file);
+    //     }
+    //   }
+    //   while (py++ < y)
+    //     std::putc('\v', file);
+    //   return;
+    // }
 
     if (x == 0) {
       std::fprintf(file, "\x1b[%dH", y + 1);
@@ -151,7 +148,7 @@ public:
   void update() {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
-        std::size_t index = y * cols + x;
+        std::size_t const index = y * cols + x;
         cell_t const& ncell = new_content[index];
         cell_t const& ocell = old_content[index];
         if (ncell.bg != ocell.bg || ncell.c != ocell.c || ncell.c != ' ' && ncell.fg != ocell.fg) {
@@ -164,6 +161,71 @@ public:
       }
     }
     std::fflush(file);
+  }
+
+private:
+  void clear_diffuse() {
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        std::size_t const index = y * cols + x;
+        cell_t& cell = new_content[index];
+        cell.diffuse = 0;
+      }
+    }
+  }
+  void add_diffuse(int x, int y, int value) {
+    if (0 <= y && y < rows && 0 <= x && x < cols && value > 0) {
+      std::size_t const index = y * cols + x;
+      cell_t& cell = new_content[index];
+      cell.diffuse += value;
+    }
+  }
+  void resolve_diffuse() {
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        std::size_t const index = y * cols + x;
+        cell_t& cell = new_content[index];
+        cell.bg = color_table[std::min(cell.diffuse / 2, 3)];
+      }
+    }
+  }
+
+private:
+  byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
+public:
+  int now = 100;
+  void resolve() {
+    now++;
+
+    clear_diffuse();
+
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        std::size_t const index = y * cols + x;
+        cell_t& cell = new_content[index];
+        int const age = now - cell.time;
+        if (age / 5 > 9) {
+          cell.c = ' ';
+          continue;
+        }
+
+        cell.level = std::max(10 - (age / 5 + age % 3), 0);
+        cell.fg = color_table[cell.level];
+        cell.bold = age / 5 < 5;
+
+        cell.diffuse += cell.level / 3;
+        add_diffuse(x - 1, y, cell.level / 3 - 1);
+        add_diffuse(x + 1, y, cell.level / 3 - 1);
+        add_diffuse(x, y - 1, cell.level / 3 - 1);
+        add_diffuse(x, y + 1, cell.level / 3 - 1);
+        add_diffuse(x - 1, y - 1, cell.level / 3 - 2);
+        add_diffuse(x + 1, y - 1, cell.level / 3 - 2);
+        add_diffuse(x - 1, y + 1, cell.level / 3 - 2);
+        add_diffuse(x + 1, y + 1, cell.level / 3 - 2);
+      }
+    }
+
+    resolve_diffuse();
   }
 
   void finalize() {
@@ -201,10 +263,9 @@ int main() {
 
     auto& cell = buff.new_content[y * buff.cols + x];
     cell.c = c;
-    cell.fg = 46;
-    cell.bg = 22;
-    cell.bold = true;
+    cell.time = buff.now;
 
+    buff.resolve();
     buff.update();
 
     struct timespec tv;
