@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <csignal>
 #include <cstdlib>
+#include <cstring>
 
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -20,6 +21,13 @@ constexpr int xmatrix_cell_power_max = 4;
 
 typedef uint8_t byte;
 
+void xmatrix_msleep(int msec) {
+  struct timespec tv;
+  tv.tv_sec = 0;
+  tv.tv_nsec = msec * 1000000;
+  nanosleep(&tv, NULL);
+}
+
 std::uint32_t xmatrix_rand() {
   static std::random_device seed_gen;
   static std::mt19937 engine(seed_gen());
@@ -29,7 +37,7 @@ std::uint32_t xmatrix_rand() {
 }
 
 char32_t xmatrix_rand_char() {
-  std::uint32_t r = xmatrix_rand() % 60;
+  std::uint32_t r = xmatrix_rand() % 80;
   if (r < 10)
     return U'0' + r;
   else
@@ -40,7 +48,7 @@ char32_t xmatrix_rand_char() {
   else
     r -= 46;
 
-  return U"｢｣<>"[r];
+  return U"｢｣<>"[r % 4];
 }
 
 struct cell_t {
@@ -222,6 +230,24 @@ private:
     }
   }
 
+public:
+  void fill_random_numbers(int stripe) {
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        std::size_t const index = y * cols + x;
+        cell_t& cell = new_content[index];
+        if (stripe && x % stripe == 0) {
+          cell.c = ' ';
+        } else {
+          cell.c = U'0' + xmatrix_rand() % 10;
+          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
+          cell.power = xmatrix_cell_power_max;
+          cell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
+        }
+      }
+    }
+  }
+
 private:
   byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
 public:
@@ -275,9 +301,161 @@ public:
     resolve_diffuse();
   }
 
+  void initialize() {
+    struct winsize ws;
+    ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
+    cols = ws.ws_col;
+    rows = ws.ws_row;
+    file = stdout;
+    new_content.clear();
+    new_content.resize(cols * rows);
+  }
+
   void finalize() {
     std::fprintf(file, "\x1b[?1049l\x1b[?25h");
     std::fflush(file);
+  }
+
+private:
+  struct glyph_t {
+    int h, w, rw;
+    const char** data;
+  };
+
+  std::vector<glyph_t> message;
+  std::size_t message_width = 0;
+
+  void scene3_initialize() {
+    static const char* T[] =
+      {
+       "#######",
+       "#  #  #",
+       "#  #  #",
+       "   #   ",
+       "   #   ",
+       "   #   ",
+       " ##### ",
+      };
+    static const char* H[] =
+      {
+       "###  ###",
+       " #    # ",
+       " #    # ",
+       " ###### ",
+       " #    # ",
+       " #    # ",
+       "###  ###",
+      };
+    static const char* E[] =
+      {
+       "#######",
+       " #    #",
+       " #     ",
+       " ####  ",
+       " #     ",
+       " #    #",
+       "#######",
+      };
+    static const char* M[] =
+      {
+       "###   ###",
+       " ##   ## ",
+       " # # # # ",
+       " #  #  # ",
+       " #     # ",
+       " #     # ",
+       "###   ###",
+      };
+    static const char* A[] =
+      {
+       "   #   ",
+       "  ###  ",
+       "  # #  ",
+       " #   # ",
+       " ##### ",
+       " #   # ",
+       "### ###",
+      };
+    static const char* R[] =
+      {
+       "###### ",
+       " #    #",
+       " #    #",
+       " ##### ",
+       " # #   ",
+       " #  # #",
+       "###  ##",
+      };
+    static const char* I[] =
+      {
+       "###",
+       " # ",
+       " # ",
+       " # ",
+       " # ",
+       " # ",
+       "###",
+      };
+    static const char* X[] =
+      {
+       "### ###",
+       " #   # ",
+       "  # #  ",
+       "   #   ",
+       "  # #  ",
+       " #   # ",
+       "### ###",
+      };
+    static const char** SP = 0;
+
+    message.clear();
+    message_width = 0;
+    for (const char** letter: {T, H, E, SP, M, A, T, R, I, X}) {
+      glyph_t g;
+      g.h = 7;
+      g.w = !letter ? 3 : std::strlen(letter[0]);
+      g.rw = g.w + 1;
+      g.data = letter;
+
+      if (message.size()) message_width++;
+      message_width += g.w;
+      message.push_back(g);
+    }
+  }
+
+  void scene3_write_letter(int x0, int y0, glyph_t const& glyph) {
+    for (int y = 0; y < glyph.h; y++) {
+      if (y0 + y >= rows) continue;
+      for (int x = 0; x < glyph.w; x++) {
+        if (x0 + x >= cols) continue;
+        if (!(glyph.data && glyph.data[y][x] == '#')) continue;
+        cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+        cell.c = xmatrix_rand_char();
+        cell.power = xmatrix_cell_power_max;
+        cell.birth = now;
+      }
+    }
+  }
+
+public:
+  void scene3() {
+    scene3_initialize();
+    if (message_width > cols) return;
+
+    for (int loop = 0; loop < 150; loop++) {
+      int i = 0;
+      int x0 = (cols - message_width) / 2, y0 = (rows - message[0].h) / 2;
+      for (glyph_t const& g : message) {
+        if (loop / 5 <= i) break;
+        scene3_write_letter(x0, y0, g);
+        x0 += g.rw;
+        i++;
+      }
+
+      resolve();
+      update();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
   }
 };
 
@@ -287,6 +465,11 @@ void trap_sigint(int sig) {
   buff.finalize();
   std::signal(sig, SIG_DFL);
   std::raise(sig);
+  std::exit(128 + sig);
+}
+void trap_sigwinch(int) {
+  buff.initialize();
+  buff.redraw();
 }
 
 struct thread_t {
@@ -295,27 +478,31 @@ struct thread_t {
 };
 
 int main() {
-  struct winsize ws;
-  ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
-  buff.cols = ws.ws_col;
-  buff.rows = ws.ws_row;
-  buff.file = stdout;
-
+  buff.initialize();
   std::fprintf(buff.file, "\x1b[?1049h\x1b[?25l");
-  std::signal(SIGINT, trap_sigint);
-
-  buff.new_content.resize(buff.cols * buff.rows);
   buff.redraw();
+  std::signal(SIGINT, trap_sigint);
+  std::signal(SIGWINCH, trap_sigwinch);
 
+  std::fprintf(buff.file, "\x1b[38;5;46m");
+  int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2, 2};
+  for (int stripe: stripe_periods) {
+    for (int i = 0; i < 30; i++) {
+      buff.fill_random_numbers(stripe);
+      buff.update();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
+  }
+
+  buff.scene3();
 
   std::vector<thread_t> threads;
   byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
-
   for (;;) {
     // remove out of range threads
     threads.erase(
       std::remove_if(threads.begin(), threads.end(),
-        [] (auto const& pos) -> bool { return pos.y >= buff.rows; }),
+        [] (auto const& pos) -> bool { return pos.y >= buff.rows || pos.x >= buff.cols; }),
       threads.end());
 
     // add new threads
@@ -331,6 +518,7 @@ int main() {
     // grow threads
     for (thread_t& pos : threads) {
       if (pos.age++ % pos.speed == 0) {
+        if (pos.y >= buff.rows || pos.x >= buff.cols) continue;
         auto& cell = buff.new_content[pos.y * buff.cols + pos.x];
         cell.power = xmatrix_cell_power_max * 2 / pos.speed;
         cell.birth = buff.now;
@@ -341,11 +529,7 @@ int main() {
 
     buff.resolve();
     buff.update();
-
-    struct timespec tv;
-    tv.tv_sec = 0;
-    tv.tv_nsec = xmatrix_frame_interval * 1000000;
-    nanosleep(&tv, NULL);
+    xmatrix_msleep(xmatrix_frame_interval);
   }
 
   buff.finalize();
