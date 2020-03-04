@@ -310,16 +310,31 @@ private:
   };
   std::vector<thread_t> threads;
 
+private:
+  void thread_step() {
+    // remove out of range threads
+    threads.erase(
+      std::remove_if(threads.begin(), threads.end(),
+        [this] (auto const& pos) -> bool { return pos.y >= rows || pos.x >= cols; }),
+      threads.end());
+
+    // grow threads
+    for (thread_t& pos : threads) {
+      if (pos.age++ % pos.speed == 0) {
+        if (pos.y >= rows || pos.x >= cols) continue;
+        auto& cell = new_content[pos.y * cols + pos.x];
+        cell.birth = now;
+        cell.power = pos.power;
+        cell.decay = pos.decay;
+        cell.c = xmatrix_rand_char();
+        pos.y++;
+      }
+    }
+  }
 public:
   void scene2() {
     byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
     for (;;) {
-      // remove out of range threads
-      threads.erase(
-        std::remove_if(threads.begin(), threads.end(),
-          [this] (auto const& pos) -> bool { return pos.y >= rows || pos.x >= cols; }),
-        threads.end());
-
       // add new threads
       if (now % (1 + 300 / cols) == 0) {
         thread_t pos;
@@ -331,20 +346,7 @@ public:
         pos.decay = xmatrix_decay_rate;
         threads.push_back(pos);
       }
-
-      // grow threads
-      for (thread_t& pos : threads) {
-        if (pos.age++ % pos.speed == 0) {
-          if (pos.y >= rows || pos.x >= cols) continue;
-          auto& cell = new_content[pos.y * cols + pos.x];
-          cell.birth = now;
-          cell.power = pos.power;
-          cell.decay = pos.decay;
-          cell.c = xmatrix_rand_char();
-          pos.y++;
-        }
-      }
-
+      thread_step();
       resolve();
       update();
       xmatrix_msleep(xmatrix_frame_interval);
@@ -393,19 +395,80 @@ private:
   std::size_t message_width = 0;
   int scene3_min_render_width = 0;
 
+  static constexpr int scene3_initial_input = 40;
   static constexpr int scene3_cell_width = 10;
   static constexpr int scene3_cell_height = 7;
 
-  void scene3_initialize() {
-    static const char* T[] =
+  void scene3_initialize(const char* msg) {
+    static const char* A[] =
+      {
+       " ###   ",
+       "  ###  ",
+       "  # #  ",
+       " #   # ",
+       " ##### ",
+       " #   # ",
+       "### ###",
+      };
+    static const char* B[] =
+      {
+       "###### ",
+       " #    #",
+       " #    #",
+       " ##### ",
+       " #    #",
+       " #    #",
+       "###### ",
+      };
+    static const char* C[] =
+      {
+       " #### #",
+       "#    ##",
+       "#      ",
+       "#      ",
+       "#      ",
+       "#     #",
+       " ##### ",
+      };
+    static const char* D[] =
+      {
+       "###### ",
+       " #    #",
+       " #    #",
+       " #    #",
+       " #    #",
+       " #    #",
+       "###### ",
+      };
+    static const char* E[] =
       {
        "#######",
-       "#  #  #",
-       "#  #  #",
-       "   #   ",
-       "   #   ",
-       "   #   ",
-       " ##### ",
+       " #    #",
+       " #  #  ",
+       " ####  ",
+       " #  #  ",
+       " #    #",
+       "#######",
+      };
+    static const char* F[] =
+      {
+       "#######",
+       " #    #",
+       " #  #  ",
+       " ####  ",
+       " #  #  ",
+       " #     ",
+       "###    ",
+      };
+    static const char* G[] =
+      {
+       " #### #",
+       "#    ##",
+       "#      ",
+       "#  ####",
+       "#    ##",
+       "#    ##",
+       " #### #",
       };
     static const char* H[] =
       {
@@ -417,13 +480,43 @@ private:
        " #    # ",
        "###  ###",
       };
-    static const char* E[] =
+    static const char* I[] =
       {
-       "#######",
+       "#####",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "#####",
+      };
+    static const char* J[] =
+      {
+       "  #####",
+       "     # ",
+       "     # ",
+       "     # ",
+       "     # ",
+       "#    # ",
+       " ##### ",
+      };
+    static const char* K[] =
+      {
+       "### ###",
+       " #   # ",
+       " #  #  ",
+       " ###   ",
+       " #  #  ",
+       " #   # ",
+       "### ###",
+      };
+    static const char* L[] =
+      {
+       "###    ",
+       " #     ",
+       " #     ",
+       " #     ",
        " #    #",
-       " #  #  ",
-       " ####  ",
-       " #  #  ",
        " #    #",
        "#######",
       };
@@ -437,15 +530,45 @@ private:
        " #     # ",
        "###   ###",
       };
-    static const char* A[] =
+    static const char* N[] =
       {
-       " ###   ",
-       "  ###  ",
-       "  # #  ",
-       " #   # ",
+       "###  ###",
+       " #    # ",
+       " ##   # ",
+       " # #  # ",
+       " #  # # ",
+       " #   ## ",
+       "###   # ",
+      };
+    static const char* O[] =
+      {
        " ##### ",
-       " #   # ",
-       "### ###",
+       "#     #",
+       "#     #",
+       "#     #",
+       "#     #",
+       "#     #",
+       " ##### ",
+      };
+    static const char* P[] =
+      {
+       "###### ",
+       " #    #",
+       " #    #",
+       " ##### ",
+       " #     ",
+       " #     ",
+       "###    ",
+      };
+    static const char* Q[] =
+      {
+       " ##### ",
+       "#     #",
+       "#     #",
+       "#     #",
+       "#   # #",
+       "#    # ",
+       " #### #",
       };
     static const char* R[] =
       {
@@ -457,15 +580,55 @@ private:
        " #  #  ",
        "###  ##",
       };
-    static const char* I[] =
+    static const char* S[] =
       {
-       "#####",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "#####",
+       " #### #",
+       "#    ##",
+       "#      ",
+       " ##### ",
+       "      #",
+       "##    #",
+       "# #### ",
+      };
+    static const char* T[] =
+      {
+       "#######",
+       "#  #  #",
+       "#  #  #",
+       "   #   ",
+       "   #   ",
+       "   #   ",
+       " ##### ",
+      };
+    static const char* U[] =
+      {
+       "###  ###",
+       " #    # ",
+       " #    # ",
+       " #    # ",
+       " #    # ",
+       " #    # ",
+       "  ####  ",
+      };
+    static const char* V[] =
+      {
+       "###   ###",
+       " #     # ",
+       "  #   #  ",
+       "  #   #  ",
+       "   # #   ",
+       "   # #   ",
+       "    #    ",
+      };
+    static const char* W[] =
+      {
+       "###   ###",
+       " #     # ",
+       " #     # ",
+       " #     # ",
+       " #  #  # ",
+       "  # # #  ",
+       "  ## ##  ",
       };
     static const char* X[] =
       {
@@ -477,16 +640,46 @@ private:
        " #   # ",
        "### ###",
       };
-    static const char** SP = 0;
+    static const char* Y[] =
+      {
+       "### ###",
+       " #   # ",
+       "  # #  ",
+       "   #   ",
+       "   #   ",
+       "   #   ",
+       " ##### ",
+      };
+    static const char* Z[] =
+      {
+       "#######",
+       "#    # ",
+       "    #  ",
+       "  #    ",
+       " #    #",
+       "#     #",
+       "#######",
+      };
+
+    static const char** alphabets[] = {A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z};
 
     message.clear();
     message_width = 0;
-    for (const char** letter: {T, H, E, SP, M, A, T, R, I, X}) {
+    while (*msg) {
+      char c = *msg++;
+
+      const char** data = nullptr;
+      if ('a' <= c && c <= 'z') {
+        data = alphabets[c - 'a'];
+      } else if ('A' <= c && c <= 'Z') {
+        data = alphabets[c - 'A'];
+      }
+
       glyph_t g;
       g.h = 7;
-      g.w = !letter ? 5 : std::strlen(letter[0]);
+      g.w = !data ? 5 : std::strlen(data[0]);
       g.render_width = g.w + 1;
-      g.data = letter;
+      g.data = data;
 
       if (message.size()) message_width++;
       message_width += g.w;
@@ -567,22 +760,22 @@ private:
   }
 
 public:
-  void scene3() {
-    scene3_initialize();
+  void scene3(const char* msg) {
+    scene3_initialize(msg);
     if (message_width > cols) return;
 
     // 最後に文字入力が起こった位置と時刻
     int input_index = -1;
     int input_time = 0;
 
-    int loop_max = 220;
+    int loop_max = scene3_initial_input + message.size() * 5 + 130;
     for (int loop = 0; loop <= loop_max; loop++) {
       int i = 0, type = 1;
       if (loop == loop_max) type = 2;
 
-      int x0 = (cols - message_width) / 2, y0 = (rows - message[0].h) / 2;
+      int x0 = (cols - message_width - scene3_min_render_width) / 2, y0 = (rows - message[0].h) / 2;
       for (glyph_t const& g : message) {
-        if ((loop - 20) / 5 <= i) break;
+        if ((loop - scene3_initial_input) / 5 <= i) break;
 
         if (input_index < i) {
           input_index = i;
@@ -600,6 +793,7 @@ public:
       scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
       //scene3_write_caret(x0, y0, true);
 
+      thread_step();
       resolve();
       update();
       xmatrix_msleep(xmatrix_frame_interval);
@@ -620,7 +814,7 @@ void trap_sigwinch(int) {
   buff.redraw();
 }
 
-int main() {
+int main(int argc, char** argv) {
   buff.initialize();
   std::fprintf(buff.file, "\x1b[?1049h\x1b[?25l");
   buff.redraw();
@@ -628,7 +822,8 @@ int main() {
   std::signal(SIGWINCH, trap_sigwinch);
 
   buff.scene1();
-  buff.scene3();
+  for (int i = 1; i < argc; i++)
+    buff.scene3(argv[i]);
   buff.scene2();
 
   buff.finalize();
