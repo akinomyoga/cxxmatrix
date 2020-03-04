@@ -48,7 +48,7 @@ char32_t xmatrix_rand_char() {
   else
     r -= 46;
 
-  return U"｢｣<>"[r % 4];
+  return U"<>*+.:=_|"[r % 9];
 }
 
 struct cell_t {
@@ -230,26 +230,10 @@ private:
     }
   }
 
-public:
-  void fill_random_numbers(int stripe) {
-    for (int y = 0; y < rows; y++) {
-      for (int x = 0; x < cols; x++) {
-        std::size_t const index = y * cols + x;
-        cell_t& cell = new_content[index];
-        if (stripe && x % stripe == 0) {
-          cell.c = ' ';
-        } else {
-          cell.c = U'0' + xmatrix_rand() % 10;
-          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
-          cell.power = xmatrix_cell_power_max;
-          cell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
-        }
-      }
-    }
-  }
-
 private:
-  byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
+  //byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
+  byte color_table[11] = {16, 22, 28, 35, 41, 47, 84, 121, 157, 194, 231, };
+  //byte color_table[11] = {16, 22, 29, 35, 42, 48, 85, 121, 158, 194, 231, };
 public:
   int now = 100;
   void resolve() {
@@ -317,13 +301,48 @@ public:
   }
 
 private:
+  void scene1_fill_numbers(int stripe) {
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        std::size_t const index = y * cols + x;
+        cell_t& cell = new_content[index];
+        if (stripe && x % stripe == 0) {
+          cell.c = ' ';
+        } else {
+          cell.c = U'0' + xmatrix_rand() % 10;
+          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
+          cell.power = xmatrix_cell_power_max;
+          cell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
+        }
+      }
+    }
+  }
+
+public:
+  void scene1() {
+    int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2, 2};
+    for (int stripe: stripe_periods) {
+      for (int i = 0; i < 30; i++) {
+        scene1_fill_numbers(stripe);
+        update();
+        xmatrix_msleep(xmatrix_frame_interval);
+      }
+    }
+  }
+
+private:
   struct glyph_t {
-    int h, w, rw;
+    int h, w;
+    int render_width;
     const char** data;
   };
 
   std::vector<glyph_t> message;
   std::size_t message_width = 0;
+  int scene3_min_render_width = 0;
+
+  static constexpr int scene3_cell_width = 10;
+  static constexpr int scene3_cell_height = 7;
 
   void scene3_initialize() {
     static const char* T[] =
@@ -388,13 +407,13 @@ private:
       };
     static const char* I[] =
       {
-       "###",
-       " # ",
-       " # ",
-       " # ",
-       " # ",
-       " # ",
-       "###",
+       "#####",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "  #  ",
+       "#####",
       };
     static const char* X[] =
       {
@@ -413,17 +432,42 @@ private:
     for (const char** letter: {T, H, E, SP, M, A, T, R, I, X}) {
       glyph_t g;
       g.h = 7;
-      g.w = !letter ? 3 : std::strlen(letter[0]);
-      g.rw = g.w + 1;
+      g.w = !letter ? 5 : std::strlen(letter[0]);
+      g.render_width = g.w + 1;
       g.data = letter;
 
       if (message.size()) message_width++;
       message_width += g.w;
       message.push_back(g);
     }
+
+    // Adjust rendering width
+    int rest = cols - message_width - 4;
+    while (rest > 0) {
+      int min_width = message[0].render_width;
+      int min_width_count = 0;
+      for (glyph_t const& g: message) {
+        if (g.render_width < min_width) {
+          min_width = g.render_width;
+          min_width_count = 1;
+        } else if (g.render_width == min_width) {
+          min_width_count++;
+        }
+      }
+
+      if (min_width >= scene3_cell_width * 3 / 2) break;
+      rest -= min_width_count;
+      if (rest < 0) break;
+
+      for (glyph_t& g: message)
+        if (g.render_width == min_width) g.render_width++;
+      message_width += min_width_count;
+      scene3_min_render_width = min_width;
+    }
   }
 
   void scene3_write_letter(int x0, int y0, glyph_t const& glyph) {
+    x0 += (glyph.render_width - 1 - glyph.w) / 2;
     for (int y = 0; y < glyph.h; y++) {
       if (y0 + y >= rows) continue;
       for (int x = 0; x < glyph.w; x++) {
@@ -437,20 +481,54 @@ private:
     }
   }
 
+  void scene3_write_caret(int x0, int y0, bool set) {
+    x0 += std::max(0, (scene3_min_render_width - 1 - scene3_cell_width) / 2);
+    for (int y = 0; y < scene3_cell_height; y++) {
+      if (y0 + y >= rows) continue;
+      for (int x = 0; x < scene3_cell_width - 1; x++) {
+        if (x0 + x >= cols) continue;
+        cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+        if (set) {
+          cell.c = xmatrix_rand_char();
+          cell.power = xmatrix_cell_power_max;
+          cell.birth = now;
+        } else {
+          cell.c = ' ';
+        }
+      }
+    }
+  }
+
 public:
   void scene3() {
     scene3_initialize();
     if (message_width > cols) return;
 
-    for (int loop = 0; loop < 150; loop++) {
+    // 最後に文字入力が起こった位置と時刻
+    int input_index = -1;
+    int input_time = 0;
+
+    for (int loop = 0; loop < 200; loop++) {
       int i = 0;
       int x0 = (cols - message_width) / 2, y0 = (rows - message[0].h) / 2;
       for (glyph_t const& g : message) {
-        if (loop / 5 <= i) break;
+        if ((loop - 20) / 5 <= i) break;
+
+        if (input_index < i) {
+          input_index = i;
+          input_time = loop;
+          scene3_write_caret(x0, y0, false);
+        }
+
         scene3_write_letter(x0, y0, g);
-        x0 += g.rw;
+        x0 += g.render_width;
+
         i++;
       }
+      // if (!((loop - input_time) / 25 & 1))
+      //   scene3_write_caret(x0, y0, true);
+      scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1));
+      //scene3_write_caret(x0, y0, true);
 
       resolve();
       update();
@@ -484,16 +562,7 @@ int main() {
   std::signal(SIGINT, trap_sigint);
   std::signal(SIGWINCH, trap_sigwinch);
 
-  std::fprintf(buff.file, "\x1b[38;5;46m");
-  int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2, 2};
-  for (int stripe: stripe_periods) {
-    for (int i = 0; i < 30; i++) {
-      buff.fill_random_numbers(stripe);
-      buff.update();
-      xmatrix_msleep(xmatrix_frame_interval);
-    }
-  }
-
+  //buff.scene1();
   buff.scene3();
 
   std::vector<thread_t> threads;
