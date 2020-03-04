@@ -59,6 +59,7 @@ struct cell_t {
 
   int birth = 0;
   int power = 0;
+  int decay = xmatrix_decay_rate;
   int level = 0;
   int diffuse = 0;
 };
@@ -248,7 +249,7 @@ public:
         if (cell.c == ' ') continue;
 
         int const age = now - cell.birth;
-        int const level1 = 10 - age / xmatrix_decay_rate;
+        int const level1 = 10 - age / cell.decay;
         if (level1 < 1) {
           cell.c = ' ';
           cell.level = 0;
@@ -296,8 +297,58 @@ public:
   }
 
   void finalize() {
+    std::fprintf(file, "\x1b[%dH\n", rows);
     std::fprintf(file, "\x1b[?1049l\x1b[?25h");
     std::fflush(file);
+  }
+
+
+private:
+  struct thread_t {
+    int x, y;
+    int age, speed, power, decay;
+  };
+  std::vector<thread_t> threads;
+
+public:
+  void scene2() {
+    byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
+    for (;;) {
+      // remove out of range threads
+      threads.erase(
+        std::remove_if(threads.begin(), threads.end(),
+          [this] (auto const& pos) -> bool { return pos.y >= rows || pos.x >= cols; }),
+        threads.end());
+
+      // add new threads
+      if (now % (1 + 300 / cols) == 0) {
+        thread_t pos;
+        pos.x = xmatrix_rand() % cols;
+        pos.y = 0;
+        pos.age = 0;
+        pos.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
+        pos.power = xmatrix_cell_power_max * 2 / pos.speed;
+        pos.decay = xmatrix_decay_rate;
+        threads.push_back(pos);
+      }
+
+      // grow threads
+      for (thread_t& pos : threads) {
+        if (pos.age++ % pos.speed == 0) {
+          if (pos.y >= rows || pos.x >= cols) continue;
+          auto& cell = new_content[pos.y * cols + pos.x];
+          cell.birth = now;
+          cell.power = pos.power;
+          cell.decay = pos.decay;
+          cell.c = xmatrix_rand_char();
+          pos.y++;
+        }
+      }
+
+      resolve();
+      update();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
   }
 
 private:
@@ -312,6 +363,7 @@ private:
           cell.c = U'0' + xmatrix_rand() % 10;
           cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
           cell.power = xmatrix_cell_power_max;
+          cell.decay = xmatrix_decay_rate;
           cell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
         }
       }
@@ -320,9 +372,9 @@ private:
 
 public:
   void scene1() {
-    int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2, 2};
+    int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2};
     for (int stripe: stripe_periods) {
-      for (int i = 0; i < 30; i++) {
+      for (int i = 0; i < 20; i++) {
         scene1_fill_numbers(stripe);
         update();
         xmatrix_msleep(xmatrix_frame_interval);
@@ -369,9 +421,9 @@ private:
       {
        "#######",
        " #    #",
-       " #     ",
+       " #  #  ",
        " ####  ",
-       " #     ",
+       " #  #  ",
        " #    #",
        "#######",
       };
@@ -387,7 +439,7 @@ private:
       };
     static const char* A[] =
       {
-       "   #   ",
+       " ###   ",
        "  ###  ",
        "  # #  ",
        " #   # ",
@@ -402,7 +454,7 @@ private:
        " #    #",
        " ##### ",
        " # #   ",
-       " #  # #",
+       " #  #  ",
        "###  ##",
       };
     static const char* I[] =
@@ -462,40 +514,55 @@ private:
       for (glyph_t& g: message)
         if (g.render_width == min_width) g.render_width++;
       message_width += min_width_count;
-      scene3_min_render_width = min_width;
+      scene3_min_render_width = min_width + 1;
     }
   }
 
-  void scene3_write_letter(int x0, int y0, glyph_t const& glyph) {
+  void scene3_write_letter(int x0, int y0, glyph_t const& glyph, int type) {
     x0 += (glyph.render_width - 1 - glyph.w) / 2;
     for (int y = 0; y < glyph.h; y++) {
       if (y0 + y >= rows) continue;
       for (int x = 0; x < glyph.w; x++) {
         if (x0 + x >= cols) continue;
         if (!(glyph.data && glyph.data[y][x] == '#')) continue;
-        cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
-        cell.c = xmatrix_rand_char();
-        cell.power = xmatrix_cell_power_max;
-        cell.birth = now;
+        scene3_set_char(x0, y0, x, y, type);
       }
     }
   }
 
-  void scene3_write_caret(int x0, int y0, bool set) {
+  void scene3_write_caret(int x0, int y0, bool set, int type) {
     x0 += std::max(0, (scene3_min_render_width - 1 - scene3_cell_width) / 2);
     for (int y = 0; y < scene3_cell_height; y++) {
       if (y0 + y >= rows) continue;
       for (int x = 0; x < scene3_cell_width - 1; x++) {
         if (x0 + x >= cols) continue;
-        cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
-        if (set) {
-          cell.c = xmatrix_rand_char();
-          cell.power = xmatrix_cell_power_max;
-          cell.birth = now;
-        } else {
-          cell.c = ' ';
-        }
+        scene3_set_char(x0, y0, x, y, set ? type : 0);
       }
+    }
+  }
+
+  void scene3_set_char(int x0, int y0, int x, int y, int type) {
+    if (type == 0) {
+      cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+      cell.c = ' ';
+    } else if (type == 1) {
+      cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+      cell.c = xmatrix_rand_char();
+      cell.birth = now;
+      cell.power = xmatrix_cell_power_max;
+      cell.decay = xmatrix_decay_rate;
+    } else if (type == 2) {
+      scene3_set_char(x0, y0, x, y, 1);
+
+      thread_t pos;
+      pos.x = x0 + x;
+      pos.y = y0 + y;
+      pos.age = 0;
+      pos.speed = scene3_cell_height - y;
+      if (pos.speed > 2) pos.speed += xmatrix_rand() % 3 - 1;
+      pos.power = xmatrix_cell_power_max * 2 / 3;
+      pos.decay = 3;
+      threads.push_back(pos);
     }
   }
 
@@ -508,8 +575,11 @@ public:
     int input_index = -1;
     int input_time = 0;
 
-    for (int loop = 0; loop < 200; loop++) {
-      int i = 0;
+    int loop_max = 220;
+    for (int loop = 0; loop <= loop_max; loop++) {
+      int i = 0, type = 1;
+      if (loop == loop_max) type = 2;
+
       int x0 = (cols - message_width) / 2, y0 = (rows - message[0].h) / 2;
       for (glyph_t const& g : message) {
         if ((loop - 20) / 5 <= i) break;
@@ -517,17 +587,17 @@ public:
         if (input_index < i) {
           input_index = i;
           input_time = loop;
-          scene3_write_caret(x0, y0, false);
+          scene3_write_caret(x0, y0, false, type);
         }
 
-        scene3_write_letter(x0, y0, g);
+        scene3_write_letter(x0, y0, g, type);
         x0 += g.render_width;
 
         i++;
       }
       // if (!((loop - input_time) / 25 & 1))
       //   scene3_write_caret(x0, y0, true);
-      scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1));
+      scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
       //scene3_write_caret(x0, y0, true);
 
       resolve();
@@ -550,11 +620,6 @@ void trap_sigwinch(int) {
   buff.redraw();
 }
 
-struct thread_t {
-  int x, y;
-  int age, speed;
-};
-
 int main() {
   buff.initialize();
   std::fprintf(buff.file, "\x1b[?1049h\x1b[?25l");
@@ -562,44 +627,9 @@ int main() {
   std::signal(SIGINT, trap_sigint);
   std::signal(SIGWINCH, trap_sigwinch);
 
-  //buff.scene1();
+  buff.scene1();
   buff.scene3();
-
-  std::vector<thread_t> threads;
-  byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
-  for (;;) {
-    // remove out of range threads
-    threads.erase(
-      std::remove_if(threads.begin(), threads.end(),
-        [] (auto const& pos) -> bool { return pos.y >= buff.rows || pos.x >= buff.cols; }),
-      threads.end());
-
-    // add new threads
-    if (buff.now % (1 + 300 / buff.cols) == 0) {
-      thread_t pos;
-      pos.x = xmatrix_rand() % buff.cols;
-      pos.y = 0;
-      pos.age = 0;
-      pos.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
-      threads.push_back(pos);
-    }
-
-    // grow threads
-    for (thread_t& pos : threads) {
-      if (pos.age++ % pos.speed == 0) {
-        if (pos.y >= buff.rows || pos.x >= buff.cols) continue;
-        auto& cell = buff.new_content[pos.y * buff.cols + pos.x];
-        cell.power = xmatrix_cell_power_max * 2 / pos.speed;
-        cell.birth = buff.now;
-        cell.c = xmatrix_rand_char();
-        pos.y++;
-      }
-    }
-
-    buff.resolve();
-    buff.update();
-    xmatrix_msleep(xmatrix_frame_interval);
-  }
+  buff.scene2();
 
   buff.finalize();
   return 0;
