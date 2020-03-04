@@ -4,6 +4,7 @@
 #include <csignal>
 #include <cstdlib>
 #include <cstring>
+#include <cassert>
 
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -386,7 +387,7 @@ public:
 
 private:
   struct glyph_definition_t {
-    char c;
+    char32_t c;
     int w;
     int lines[7];
   };
@@ -403,11 +404,11 @@ private:
   static constexpr int scene3_cell_width = 10;
   static constexpr int scene3_cell_height = 7;
 
-  void scene3_initialize(const char* msg) {
+  void scene3_initialize(std::vector<char32_t> const& msg) {
     static glyph_definition_t glyph_defs[] = {
 #include "glyph.inl"
     };
-    static std::unordered_map<char, glyph_definition_t const*> map;
+    static std::unordered_map<char32_t, glyph_definition_t const*> map;
     if (map.empty()) {
       for (auto const& def : glyph_defs)
         map[def.c] = &def;
@@ -415,13 +416,15 @@ private:
 
     message.clear();
     message_width = 0;
-    while (*msg) {
-      char c = *msg++;
-      if ('a' <= c && c <= 'z')
-        c = c - 'a' + 'A';
+    for (char32_t c: msg) {
+      if (U'a' <= c && c <= U'z')
+        c = c - U'a' + U'A';
+
+      auto it = map.find(c);
+      if (it == map.end() && c != ' ')
+        it = map.find(U'\uFFFD');
 
       glyph_t g;
-      auto const it = map.find(c);
       g.def = it != map.end() ? it->second : nullptr;
       g.h = 7;
       g.w = g.def ? g.def->w : 5;
@@ -524,10 +527,50 @@ private:
     }
   }
 
+  static void scene3_decode(std::vector<char32_t>& msg, const char* msg_u8) {
+    while (*msg_u8) {
+      std::uint32_t code = (byte) *msg_u8++;
+      int remain;
+      std::uint32_t min_code;
+      if (code < 0xC0) {
+        if (code >= 0x80) goto error_char;
+        remain = 0;
+        min_code = 0;
+      } else if (code < 0xE0) {
+        remain = 1;
+        min_code = 1 << 7;
+      } else if (code < 0xF0) {
+        remain = 2;
+        min_code = 1 << 11;
+      } else if (code < 0xF8) {
+        remain = 3;
+        min_code = 1 << 16;
+      } else if (code < 0xFC) {
+        remain = 4;
+        min_code = 1 << 21;
+      } else if (code < 0xFE) {
+        remain = 5;
+        min_code = 1 << 26;
+      } else {
+        goto error_char;
+      }
+
+      if (remain) code &= (1 << 6 - remain) - 1;
+      while (remain-- && 0x80 <= (byte) *msg_u8 && (byte) *msg_u8 < 0xC0)
+        code = code << 6 | (*msg_u8++ & 0x3F);
+      if (code < min_code) goto error_char;
+      msg.push_back(code);
+      continue;
+    error_char:
+      msg.push_back(0xFFFD);
+    }
+  }
 public:
-  void scene3(const char* msg) {
+  void scene3(const char* msg_u8) {
+    std::vector<char32_t> msg;
+    scene3_decode(msg, msg_u8);
     scene3_initialize(msg);
-    std::size_t nchar = std::strlen(msg);
+    std::size_t nchar = msg.size();
 
     int mode = 1, display_width = nchar + 1, display_height = 1;
     if (message_width < cols) {
@@ -544,7 +587,7 @@ public:
     int input_index = -1;
     int input_time = 0;
 
-    int loop_max = scene3_initial_input + message.size() * 5 + 130;
+    int loop_max = scene3_initial_input + nchar * 5 + 130;
     for (int loop = 0; loop <= loop_max; loop++) {
       int i = 0, type = 1;
       if (loop == loop_max) type = 2;
@@ -574,8 +617,8 @@ public:
           break;
         default:
           {
-            char c = msg[i];
-            if ('a' <= c && c <= 'z') c = c - 'a' + 'A';
+            char32_t c = msg[i];
+            if (U'a' <= c && c <= U'z') c = c - U'a' + U'A';
             scene3_put_char(x0, y0, 0, 0, type, c);
           }
           x0 += mode;
