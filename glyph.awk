@@ -9,7 +9,9 @@ function output_glyph(_, tail, offset, len, i, j, x, y, l) {
   while (match(tail, /^[^[:space:]]+/) > 0) {
     len = RLENGTH;
 
-    printf("{'%s', %d, {", substr(tail, 1, 1), len);
+    c = substr(tail, 1, 1);
+    if (c ~ /[\\\']/) c = "\\" c;
+    printf("{U'%s', %d, {", c, len);
     for (i = 0; i < 7; i++) {
       x = substr(data[i], offset + 1, len);
       l = length(x);

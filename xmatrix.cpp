@@ -52,7 +52,7 @@ char32_t xmatrix_rand_char() {
 }
 
 struct cell_t {
-  char32_t c = ' ';
+  char32_t c = U' ';
   byte fg = 16;
   byte bg = 16;
   bool bold = false;
