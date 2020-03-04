@@ -480,18 +480,18 @@ private:
     }
   }
 
-  void scene3_set_char(int x0, int y0, int x, int y, int type) {
+  void scene3_put_char(int x0, int y0, int x, int y, int type, char32_t uchar) {
     if (type == 0) {
       cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
       cell.c = ' ';
     } else if (type == 1) {
       cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
-      cell.c = xmatrix_rand_char();
+      cell.c = uchar;
       cell.birth = now;
       cell.power = xmatrix_cell_power_max;
-      cell.decay = xmatrix_decay_rate;
+      cell.decay = 2;
     } else if (type == 2) {
-      scene3_set_char(x0, y0, x, y, 1);
+      scene3_put_char(x0, y0, x, y, uchar, 1);
 
       thread_t pos;
       pos.x = x0 + x;
@@ -503,6 +503,12 @@ private:
       pos.decay = 3;
       threads.push_back(pos);
     }
+  }
+  void scene3_set_char(int x0, int y0, int x, int y, int type) {
+    if (type == 0)
+      scene3_put_char(x0, y0, x, y, type, ' ');
+    else
+      scene3_put_char(x0, y0, x, y, type, xmatrix_rand_char());
   }
 
   void scene3_add_thread() {
@@ -521,7 +527,18 @@ private:
 public:
   void scene3(const char* msg) {
     scene3_initialize(msg);
-    if (message_width > cols) return;
+    std::size_t nchar = std::strlen(msg);
+
+    int mode = 1, display_width = nchar + 1, display_height = 1;
+    if (message_width < cols) {
+      nchar = message.size();
+      display_width = message_width + scene3_min_render_width;
+      display_height = message[0].h;
+      mode = 0;
+    } else if (nchar * 2 < cols) {
+      mode = 2;
+      display_width *= 2;
+    }
 
     // 最後に文字入力が起こった位置と時刻
     int input_index = -1;
@@ -532,25 +549,51 @@ public:
       int i = 0, type = 1;
       if (loop == loop_max) type = 2;
 
-      int x0 = (cols - message_width - scene3_min_render_width) / 2, y0 = (rows - message[0].h) / 2;
-      for (glyph_t const& g : message) {
+      int x0 = (cols - display_width) / 2, y0 = (rows - display_height) / 2;
+      if (mode != 0 && xmatrix_rand() % 20 == 0)
+        y0 += xmatrix_rand() % 7 - 3;
+      for (int i = 0; i < nchar; i++) {
         if ((loop - scene3_initial_input) / 5 <= i) break;
 
+        bool caret_moved = false;
         if (input_index < i) {
           input_index = i;
           input_time = loop;
-          scene3_write_caret(x0, y0, false, type);
+          caret_moved = true;
         }
 
-        scene3_write_letter(x0, y0, g, type);
-        x0 += g.render_width;
-
-        i++;
+        switch (mode) {
+        case 0:
+          {
+            glyph_t const& g = message[i];
+            if (caret_moved)
+              scene3_write_caret(x0, y0, false, type);
+            scene3_write_letter(x0, y0, g, type);
+            x0 += g.render_width;
+          }
+          break;
+        default:
+          {
+            char c = msg[i];
+            if ('a' <= c && c <= 'z') c = c - 'a' + 'A';
+            scene3_put_char(x0, y0, 0, 0, type, c);
+          }
+          x0 += mode;
+          break;
+        }
       }
-      // if (!((loop - input_time) / 25 & 1))
-      //   scene3_write_caret(x0, y0, true);
-      scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
-      //scene3_write_caret(x0, y0, true);
+
+      switch (mode) {
+      case 0:
+        // if (!((loop - input_time) / 25 & 1))
+        //   scene3_write_caret(x0, y0, true);
+        scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
+        //scene3_write_caret(x0, y0, true);
+        break;
+      default:
+        scene3_put_char(x0, y0, 0, 0, type, U'\u2589');
+        break;
+      }
 
       scene3_add_thread();
       thread_step();
