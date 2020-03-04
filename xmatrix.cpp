@@ -385,12 +385,16 @@ public:
   }
 
 private:
+  struct glyph_definition_t {
+    char c;
+    int w;
+    int lines[7];
+  };
   struct glyph_t {
     int h, w;
     int render_width;
-    const char** data;
+    glyph_definition_t const* def;
   };
-
   std::vector<glyph_t> message;
   std::size_t message_width = 0;
   int scene3_min_render_width = 0;
@@ -400,286 +404,28 @@ private:
   static constexpr int scene3_cell_height = 7;
 
   void scene3_initialize(const char* msg) {
-    static const char* A[] =
-      {
-       " ###   ",
-       "  ###  ",
-       "  # #  ",
-       " #   # ",
-       " ##### ",
-       " #   # ",
-       "### ###",
-      };
-    static const char* B[] =
-      {
-       "###### ",
-       " #    #",
-       " #    #",
-       " ##### ",
-       " #    #",
-       " #    #",
-       "###### ",
-      };
-    static const char* C[] =
-      {
-       " #### #",
-       "#    ##",
-       "#      ",
-       "#      ",
-       "#      ",
-       "#     #",
-       " ##### ",
-      };
-    static const char* D[] =
-      {
-       "###### ",
-       " #    #",
-       " #    #",
-       " #    #",
-       " #    #",
-       " #    #",
-       "###### ",
-      };
-    static const char* E[] =
-      {
-       "#######",
-       " #    #",
-       " #  #  ",
-       " ####  ",
-       " #  #  ",
-       " #    #",
-       "#######",
-      };
-    static const char* F[] =
-      {
-       "#######",
-       " #    #",
-       " #  #  ",
-       " ####  ",
-       " #  #  ",
-       " #     ",
-       "###    ",
-      };
-    static const char* G[] =
-      {
-       " #### #",
-       "#    ##",
-       "#      ",
-       "#  ####",
-       "#    ##",
-       "#    ##",
-       " #### #",
-      };
-    static const char* H[] =
-      {
-       "###  ###",
-       " #    # ",
-       " #    # ",
-       " ###### ",
-       " #    # ",
-       " #    # ",
-       "###  ###",
-      };
-    static const char* I[] =
-      {
-       "#####",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "  #  ",
-       "#####",
-      };
-    static const char* J[] =
-      {
-       "  #####",
-       "     # ",
-       "     # ",
-       "     # ",
-       "     # ",
-       "#    # ",
-       " ##### ",
-      };
-    static const char* K[] =
-      {
-       "### ###",
-       " #   # ",
-       " #  #  ",
-       " ###   ",
-       " #  #  ",
-       " #   # ",
-       "### ###",
-      };
-    static const char* L[] =
-      {
-       "###    ",
-       " #     ",
-       " #     ",
-       " #     ",
-       " #    #",
-       " #    #",
-       "#######",
-      };
-    static const char* M[] =
-      {
-       "###   ###",
-       " ##   ## ",
-       " # # # # ",
-       " #  #  # ",
-       " #     # ",
-       " #     # ",
-       "###   ###",
-      };
-    static const char* N[] =
-      {
-       "###  ###",
-       " #    # ",
-       " ##   # ",
-       " # #  # ",
-       " #  # # ",
-       " #   ## ",
-       "###   # ",
-      };
-    static const char* O[] =
-      {
-       " ##### ",
-       "#     #",
-       "#     #",
-       "#     #",
-       "#     #",
-       "#     #",
-       " ##### ",
-      };
-    static const char* P[] =
-      {
-       "###### ",
-       " #    #",
-       " #    #",
-       " ##### ",
-       " #     ",
-       " #     ",
-       "###    ",
-      };
-    static const char* Q[] =
-      {
-       " ##### ",
-       "#     #",
-       "#     #",
-       "#     #",
-       "#   # #",
-       "#    # ",
-       " #### #",
-      };
-    static const char* R[] =
-      {
-       "###### ",
-       " #    #",
-       " #    #",
-       " ##### ",
-       " # #   ",
-       " #  #  ",
-       "###  ##",
-      };
-    static const char* S[] =
-      {
-       " #### #",
-       "#    ##",
-       "#      ",
-       " ##### ",
-       "      #",
-       "##    #",
-       "# #### ",
-      };
-    static const char* T[] =
-      {
-       "#######",
-       "#  #  #",
-       "#  #  #",
-       "   #   ",
-       "   #   ",
-       "   #   ",
-       " ##### ",
-      };
-    static const char* U[] =
-      {
-       "###  ###",
-       " #    # ",
-       " #    # ",
-       " #    # ",
-       " #    # ",
-       " #    # ",
-       "  ####  ",
-      };
-    static const char* V[] =
-      {
-       "###   ###",
-       " #     # ",
-       "  #   #  ",
-       "  #   #  ",
-       "   # #   ",
-       "   # #   ",
-       "    #    ",
-      };
-    static const char* W[] =
-      {
-       "###   ###",
-       " #     # ",
-       " #     # ",
-       " #     # ",
-       " #  #  # ",
-       "  # # #  ",
-       "  ## ##  ",
-      };
-    static const char* X[] =
-      {
-       "### ###",
-       " #   # ",
-       "  # #  ",
-       "   #   ",
-       "  # #  ",
-       " #   # ",
-       "### ###",
-      };
-    static const char* Y[] =
-      {
-       "### ###",
-       " #   # ",
-       "  # #  ",
-       "   #   ",
-       "   #   ",
-       "   #   ",
-       " ##### ",
-      };
-    static const char* Z[] =
-      {
-       "#######",
-       "#    # ",
-       "    #  ",
-       "  #    ",
-       " #    #",
-       "#     #",
-       "#######",
-      };
-
-    static const char** alphabets[] = {A, B, C, D, E, F, G, H, I, J, K, L, M, N, O, P, Q, R, S, T, U, V, W, X, Y, Z};
+    static glyph_definition_t glyph_defs[] = {
+#include "glyph.inl"
+    };
+    static std::unordered_map<char, glyph_definition_t const*> map;
+    if (map.empty()) {
+      for (auto const& def : glyph_defs)
+        map[def.c] = &def;
+    }
 
     message.clear();
     message_width = 0;
     while (*msg) {
       char c = *msg++;
-
-      const char** data = nullptr;
-      if ('a' <= c && c <= 'z') {
-        data = alphabets[c - 'a'];
-      } else if ('A' <= c && c <= 'Z') {
-        data = alphabets[c - 'A'];
-      }
+      if ('a' <= c && c <= 'z')
+        c = c - 'a' + 'A';
 
       glyph_t g;
+      auto const it = map.find(c);
+      g.def = it != map.end() ? it->second : nullptr;
       g.h = 7;
-      g.w = !data ? 5 : std::strlen(data[0]);
+      g.w = g.def ? g.def->w : 5;
       g.render_width = g.w + 1;
-      g.data = data;
 
       if (message.size()) message_width++;
       message_width += g.w;
@@ -717,7 +463,7 @@ private:
       if (y0 + y >= rows) continue;
       for (int x = 0; x < glyph.w; x++) {
         if (x0 + x >= cols) continue;
-        if (!(glyph.data && glyph.data[y][x] == '#')) continue;
+        if (!(glyph.def && glyph.def->lines[y] & (1 << x))) continue;
         scene3_set_char(x0, y0, x, y, type);
       }
     }
@@ -759,6 +505,19 @@ private:
     }
   }
 
+  void scene3_add_thread() {
+    if (now % (1 + 2000 / cols) == 0) {
+      thread_t pos;
+      pos.x = xmatrix_rand() % cols;
+      pos.y = 0;
+      pos.age = 0;
+      pos.speed = 8;
+      pos.power = 2;
+      pos.decay = xmatrix_decay_rate;
+      threads.push_back(pos);
+    }
+  }
+
 public:
   void scene3(const char* msg) {
     scene3_initialize(msg);
@@ -793,6 +552,7 @@ public:
       scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
       //scene3_write_caret(x0, y0, true);
 
+      scene3_add_thread();
       thread_step();
       resolve();
       update();
