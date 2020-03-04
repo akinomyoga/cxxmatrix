@@ -28,6 +28,21 @@ std::uint32_t xmatrix_rand() {
   //return std::rand();
 }
 
+char32_t xmatrix_rand_char() {
+  std::uint32_t r = xmatrix_rand() % 60;
+  if (r < 10)
+    return U'0' + r;
+  else
+    r -= 10;
+
+  if (r < 46)
+    return U'ｰ' + r;
+  else
+    r -= 46;
+
+  return U"｢｣<>"[r];
+}
+
 struct cell_t {
   char32_t c = ' ';
   byte fg = 16;
@@ -230,6 +245,9 @@ public:
           continue;
         }
 
+        if (xmatrix_rand() % 20 == 0)
+          cell.c = xmatrix_rand_char();
+
         int stage_twinkle = 1 + (level1 - 1) * cell.power / xmatrix_cell_power_max;
         if (stage_twinkle > 2)
           stage_twinkle -= xmatrix_rand() % 3;
@@ -316,7 +334,7 @@ int main() {
         auto& cell = buff.new_content[pos.y * buff.cols + pos.x];
         cell.power = xmatrix_cell_power_max * 2 / pos.speed;
         cell.birth = buff.now;
-        cell.c = L'ｱ' + xmatrix_rand() % 50;
+        cell.c = xmatrix_rand_char();
         pos.y++;
       }
     }
