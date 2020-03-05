@@ -16,6 +16,8 @@
 #include <random>
 #include <limits>
 
+namespace cxxmatrix {
+
 constexpr int xmatrix_frame_interval = 20;
 constexpr int xmatrix_decay_rate = 10;
 constexpr int xmatrix_cell_power_max = 4;
@@ -37,6 +39,12 @@ std::uint32_t xmatrix_rand() {
   //return std::rand();
 }
 
+int mod(int value, int modulo) {
+  value %= modulo;
+  if (value < 0) value += modulo;
+  return value;
+}
+
 char32_t xmatrix_rand_char() {
   std::uint32_t r = xmatrix_rand() % 80;
   if (r < 10)
@@ -52,24 +60,117 @@ char32_t xmatrix_rand_char() {
   return U"<>*+.:=_|"[r % 9];
 }
 
-struct cell_t {
+struct tcell_t {
   char32_t c = U' ';
   byte fg = 16;
   byte bg = 16;
   bool bold = false;
-
-  int birth = 0;
-  int power = 0;
-  int decay = xmatrix_decay_rate;
-  int level = 0;
   int diffuse = 0;
+};
+
+struct cell_t {
+  char32_t c = U' ';
+  int birth = 0; // 設置時刻
+  int power = 0; // 初期の明るさ
+  int decay = xmatrix_decay_rate; // 消滅時間
+  int stage = 0; // 現在の消滅段階 (0..10)
+  int level = 0; // 現在の明るさ(瞬き処理の前) (0..10)
+};
+
+struct thread_t {
+  int x, y;
+  int age, speed, power, decay;
+};
+
+struct layer_t {
+  int cols, rows;
+  int scrollx, scrolly;
+  std::vector<cell_t> content;
+  std::vector<thread_t> threads;
+
+public:
+  void resize(int cols, int rows) {
+    content.clear();
+    content.resize(cols * rows);
+    this->cols = cols;
+    this->rows = rows;
+    scrollx = 0;
+    scrolly = 0;
+  }
+  cell_t& cell(int x, int y) {
+    return content[y * cols + x];
+  }
+  cell_t& rcell(int x, int y) {
+    x = mod(x + scrollx, cols);
+    y = mod(y + scrolly, rows);
+    return cell(x, y);
+  }
+  cell_t const& cell(int x, int y) const {
+    return const_cast<layer_t*>(this)->cell(x, y);
+  }
+  cell_t const& rcell(int x, int y) const {
+    return const_cast<layer_t*>(this)->rcell(x, y);
+  }
+
+public:
+  void add_thread(thread_t const& thread) {
+    threads.emplace_back(thread);
+    threads.back().x += scrollx;
+    threads.back().y += scrolly;
+  }
+  void step_threads(int now) {
+    // remove out of range threads
+    threads.erase(
+      std::remove_if(threads.begin(), threads.end(),
+        [this] (auto const& pos) -> bool {
+          return pos.y < scrolly || rows + scrolly <= pos.y;
+        }), threads.end());
+
+    // grow threads
+    for (thread_t& pos : threads) {
+      if (pos.age++ % pos.speed == 0) {
+        int const x = pos.x - scrollx;
+        int const y = pos.y - scrolly;
+        if (y < 0 || rows <= y || x < 0 || cols <= x) continue;
+        cell_t& cell = this->cell(mod(pos.x, cols), mod(pos.y, rows));
+        cell.birth = now;
+        cell.power = pos.power;
+        cell.decay = pos.decay;
+        cell.c = xmatrix_rand_char();
+        pos.y++;
+      }
+    }
+  }
+
+public:
+  void resolve_level(int now) {
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        cell_t& cell = this->rcell(x, y);
+        if (cell.c == ' ') continue;
+
+        int const age = now - cell.birth;
+        cell.stage = 10 - age / cell.decay;
+        if (cell.stage < 1) {
+          cell.c = ' ';
+          continue;
+        }
+
+        cell.level = 1 + (cell.stage - 1) * cell.power / xmatrix_cell_power_max;
+        if (xmatrix_rand() % 20 == 0)
+          cell.c = xmatrix_rand_char();
+      }
+    }
+  }
 };
 
 struct buffer {
   int cols, rows;
-  std::vector<cell_t> old_content;
-  std::vector<cell_t> new_content;
+  std::vector<tcell_t> old_content;
+  std::vector<tcell_t> new_content;
   std::FILE* file;
+
+  layer_t layers[3];
 
 private:
   void put_utf8(char32_t uc) {
@@ -99,18 +200,18 @@ private:
     fg = 0;
     bg = 0;
   }
-  void set_color(cell_t const& cell) {
-    if (cell.bg != this->bg) {
-      this->bg = cell.bg;
+  void set_color(tcell_t const& tcell) {
+    if (tcell.bg != this->bg) {
+      this->bg = tcell.bg;
       std::fprintf(file, "\x1b[48;5;%dm", this->bg);
     }
-    if (cell.c != ' ') {
-      if (cell.fg != fg) {
-        this->fg = cell.fg;
+    if (tcell.c != ' ') {
+      if (tcell.fg != fg) {
+        this->fg = tcell.fg;
         std::fprintf(file, "\x1b[38;5;%dm", this->fg);
       }
-      if (cell.bold != bold) {
-        this->bold = cell.bold;
+      if (tcell.bold != bold) {
+        this->bold = tcell.bold;
         std::fprintf(file, "\x1b[%dm", this->bold ? 1 : 22);
       }
     }
@@ -175,9 +276,9 @@ public:
     goto_xy(0, 0);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
-        cell_t const& cell = new_content[y * cols + x];
-        set_color(cell);
-        put_utf8(cell.c);
+        tcell_t const& tcell = new_content[y * cols + x];
+        set_color(tcell);
+        put_utf8(tcell.c);
       }
     }
     std::fflush(file);
@@ -187,13 +288,13 @@ public:
       old_content[i] = new_content[i];
   }
 
-  void update() {
+  void draw_content() {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
-        cell_t const& ncell = new_content[index];
-        cell_t const& ocell = old_content[index];
-        if (ncell.bg != ocell.bg || ncell.c != ocell.c || ncell.c != ' ' && ncell.fg != ocell.fg) {
+        tcell_t const& ncell = new_content[index];
+        tcell_t const& ocell = old_content[index];
+        if (ncell.bg != ocell.bg || ncell.c != ocell.c || (ncell.c != ' ' && ncell.fg != ocell.fg)) {
           goto_xy(x, y);
           set_color(ncell);
           put_utf8(ncell.c);
@@ -210,81 +311,101 @@ private:
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
-        cell_t& cell = new_content[index];
-        cell.diffuse = 0;
+        tcell_t& tcell = new_content[index];
+        tcell.diffuse = 0;
+        tcell.bg = color_table[0];
       }
     }
   }
   void add_diffuse(int x, int y, int value) {
     if (0 <= y && y < rows && 0 <= x && x < cols && value > 0) {
       std::size_t const index = y * cols + x;
-      cell_t& cell = new_content[index];
-      cell.diffuse += value;
+      tcell_t& tcell = new_content[index];
+      tcell.diffuse += value;
     }
   }
   void resolve_diffuse() {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
-        cell_t& cell = new_content[index];
-        cell.bg = color_table[std::min(cell.diffuse / 3, 3)];
+        tcell_t& tcell = new_content[index];
+        tcell.bg = color_table[std::min(tcell.diffuse / 3, 3)];
       }
     }
   }
+
+public:
+  int now = 100;
 
 private:
   //byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
   byte color_table[11] = {16, 22, 28, 35, 41, 47, 84, 121, 157, 194, 231, };
   //byte color_table[11] = {16, 22, 29, 35, 42, 48, 85, 121, 158, 194, 231, };
-public:
-  int now = 100;
-  void resolve() {
-    now++;
 
+  cell_t const* rend_cell(int x, int y) {
+    for (auto& layer: layers) {
+      auto const& cell = layer.rcell(x, y);
+      if (cell.c != ' ') return &cell;
+    }
+    return nullptr;
+  }
+
+  void construct_render_content() {
     clear_diffuse();
-
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
-        cell_t& cell = new_content[index];
-        if (cell.c == ' ') continue;
+        tcell_t& tcell = new_content[index];
 
-        int const age = now - cell.birth;
-        int const level1 = 10 - age / cell.decay;
-        if (level1 < 1) {
-          cell.c = ' ';
-          cell.level = 0;
+        cell_t const* lcell = this->rend_cell(x, y);
+        if (!lcell) {
+          tcell.c = ' ';
           continue;
         }
 
-        if (xmatrix_rand() % 20 == 0)
-          cell.c = xmatrix_rand_char();
+        tcell.c = lcell->c;
 
-        int stage_twinkle = 1 + (level1 - 1) * cell.power / xmatrix_cell_power_max;
-        if (stage_twinkle > 2)
-          stage_twinkle -= xmatrix_rand() % 3;
-        else if (stage_twinkle == 2)
-          stage_twinkle = xmatrix_rand() % 4 ? 2 : 1;
+        int level = lcell->level;
+
+        // 瞬き処理
+        if (level > 2)
+          level -= xmatrix_rand() % (level > 5 ? 3 : 2);
+        else if (level == 2)
+          level = xmatrix_rand() % 4 ? 2 : 1;
         else
-          stage_twinkle = xmatrix_rand() % 6 ? 1 : 0;
+          level = xmatrix_rand() % 6 ? 1 : 0;
 
-        cell.level = std::max(stage_twinkle, 0);
-        cell.fg = color_table[cell.level];
-        cell.bold = level1 > 5;
+        tcell.fg = color_table[level];
+        tcell.bold = lcell->stage > 5;
 
-        cell.diffuse += cell.level / 3;
-        add_diffuse(x - 1, y, cell.level / 3 - 1);
-        add_diffuse(x + 1, y, cell.level / 3 - 1);
-        add_diffuse(x, y - 1, cell.level / 3 - 1);
-        add_diffuse(x, y + 1, cell.level / 3 - 1);
-        add_diffuse(x - 1, y - 1, cell.level / 5 - 1);
-        add_diffuse(x + 1, y - 1, cell.level / 5 - 1);
-        add_diffuse(x - 1, y + 1, cell.level / 5 - 1);
-        add_diffuse(x + 1, y + 1, cell.level / 5 - 1);
+        tcell.diffuse += level / 3;
+        add_diffuse(x - 1, y, level / 3 - 1);
+        add_diffuse(x + 1, y, level / 3 - 1);
+        add_diffuse(x, y - 1, level / 3 - 1);
+        add_diffuse(x, y + 1, level / 3 - 1);
+        add_diffuse(x - 1, y - 1, level / 5 - 1);
+        add_diffuse(x + 1, y - 1, level / 5 - 1);
+        add_diffuse(x - 1, y + 1, level / 5 - 1);
+        add_diffuse(x + 1, y + 1, level / 5 - 1);
       }
     }
 
     resolve_diffuse();
+  }
+
+public:
+  void render_direct() {
+    now++;
+    this->draw_content();
+  }
+  void render_layers() {
+    now++;
+    for (auto& layer: layers) {
+      layer.step_threads(now);
+      layer.resolve_level(now);
+    }
+    this->construct_render_content();
+    this->draw_content();
   }
 
   void initialize() {
@@ -295,6 +416,9 @@ public:
     file = stdout;
     new_content.clear();
     new_content.resize(cols * rows);
+
+    for (auto& layer : layers)
+      layer.resize(cols, rows);
   }
 
   void finalize() {
@@ -305,51 +429,50 @@ public:
 
 
 private:
-  struct thread_t {
-    int x, y;
-    int age, speed, power, decay;
-  };
-  std::vector<thread_t> threads;
+  double scene2_scroll_func(double value) {
+    value = value / 200.0 - 10.0;
+    constexpr double tanh_range = 2.0;
+    static double th1 = std::tanh(tanh_range);
+    value = std::max(value, -tanh_range * 2.0);
 
-private:
-  void thread_step() {
-    // remove out of range threads
-    threads.erase(
-      std::remove_if(threads.begin(), threads.end(),
-        [this] (auto const& pos) -> bool { return pos.y >= rows || pos.x >= cols; }),
-      threads.end());
-
-    // grow threads
-    for (thread_t& pos : threads) {
-      if (pos.age++ % pos.speed == 0) {
-        if (pos.y >= rows || pos.x >= cols) continue;
-        auto& cell = new_content[pos.y * cols + pos.x];
-        cell.birth = now;
-        cell.power = pos.power;
-        cell.decay = pos.decay;
-        cell.c = xmatrix_rand_char();
-        pos.y++;
-      }
+    if (value < -tanh_range) {
+      return -th1 + (1.0 - th1 * th1) * (value + tanh_range);
+    } else if (value < tanh_range) {
+      return std::tanh(value);
+    } else {
+      return th1 + (1.0 - th1 * th1) * (value - tanh_range);
     }
   }
+
 public:
   void scene2() {
-    byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
-    for (;;) {
+    static byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
+    double const scr0 = scene2_scroll_func(0);
+    for (std::uint32_t loop = 0; ; loop++) {
       // add new threads
-      if (now % (1 + 300 / cols) == 0) {
-        thread_t pos;
-        pos.x = xmatrix_rand() % cols;
-        pos.y = 0;
-        pos.age = 0;
-        pos.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
-        pos.power = xmatrix_cell_power_max * 2 / pos.speed;
-        pos.decay = xmatrix_decay_rate;
-        threads.push_back(pos);
+      if (now % (1 + 150 / cols) == 0) {
+        thread_t thread;
+        thread.x = xmatrix_rand() % cols;
+        thread.y = 0;
+        thread.age = 0;
+        thread.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
+        thread.power = xmatrix_cell_power_max * 2 / thread.speed;
+        thread.decay = xmatrix_decay_rate;
+
+        int const layer = thread.speed < 3 ? 0 : thread.speed < 5 ? 1 : 2;
+        layers[layer].add_thread(thread);
       }
-      thread_step();
-      resolve();
-      update();
+
+      double const scr = scene2_scroll_func(loop) - scr0;
+      layers[0].scrollx = -std::round(500 * scr);
+      layers[1].scrollx = -std::round(50 * scr);
+      layers[2].scrollx = +std::round(200 * scr);
+
+      layers[0].scrolly = -std::round(25 * scr);
+      layers[1].scrolly = +std::round(20 * scr);
+      layers[2].scrolly = +std::round(45 * scr);
+
+      render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
   }
@@ -358,16 +481,18 @@ private:
   void scene1_fill_numbers(int stripe) {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
-        std::size_t const index = y * cols + x;
-        cell_t& cell = new_content[index];
+        tcell_t& tcell = new_content[y * cols + x];
+        cell_t& cell = layers[1].rcell(x, y);
         if (stripe && x % stripe == 0) {
           cell.c = ' ';
+          tcell.c = ' ';
         } else {
           cell.c = U'0' + xmatrix_rand() % 10;
           cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
           cell.power = xmatrix_cell_power_max;
           cell.decay = xmatrix_decay_rate;
-          cell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
+          tcell.c = cell.c;
+          tcell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
         }
       }
     }
@@ -379,7 +504,7 @@ public:
     for (int stripe: stripe_periods) {
       for (int i = 0; i < 20; i++) {
         scene1_fill_numbers(stripe);
-        update();
+        render_direct();
         xmatrix_msleep(xmatrix_frame_interval);
       }
     }
@@ -397,12 +522,13 @@ private:
     glyph_definition_t const* def;
   };
   std::vector<glyph_t> message;
-  std::size_t message_width = 0;
+  int message_width = 0;
   int scene3_min_render_width = 0;
 
   static constexpr int scene3_initial_input = 40;
   static constexpr int scene3_cell_width = 10;
   static constexpr int scene3_cell_height = 7;
+  static constexpr std::size_t scene3_max_message_size = 0x1000;
 
   void scene3_initialize(std::vector<char32_t> const& msg) {
     static glyph_definition_t glyph_defs[] = {
@@ -485,10 +611,10 @@ private:
 
   void scene3_put_char(int x0, int y0, int x, int y, int type, char32_t uchar) {
     if (type == 0) {
-      cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+      cell_t& cell = layers[0].cell(x0 + x, y0 + y);
       cell.c = ' ';
     } else if (type == 1) {
-      cell_t& cell = new_content[(y0 + y) * cols + (x0 + x)];
+      cell_t& cell = layers[0].cell(x0 + x, y0 + y);
       cell.c = uchar;
       cell.birth = now;
       cell.power = xmatrix_cell_power_max;
@@ -496,15 +622,15 @@ private:
     } else if (type == 2) {
       scene3_put_char(x0, y0, x, y, uchar, 1);
 
-      thread_t pos;
-      pos.x = x0 + x;
-      pos.y = y0 + y;
-      pos.age = 0;
-      pos.speed = scene3_cell_height - y;
-      if (pos.speed > 2) pos.speed += xmatrix_rand() % 3 - 1;
-      pos.power = xmatrix_cell_power_max * 2 / 3;
-      pos.decay = 3;
-      threads.push_back(pos);
+      thread_t thread;
+      thread.x = x0 + x;
+      thread.y = y0 + y;
+      thread.age = 0;
+      thread.speed = scene3_cell_height - y;
+      if (thread.speed > 2) thread.speed += xmatrix_rand() % 3 - 1;
+      thread.power = xmatrix_cell_power_max * 2 / 3;
+      thread.decay = 3;
+      layers[1].add_thread(thread);
     }
   }
   void scene3_set_char(int x0, int y0, int x, int y, int type) {
@@ -516,19 +642,19 @@ private:
 
   void scene3_add_thread() {
     if (now % (1 + 2000 / cols) == 0) {
-      thread_t pos;
-      pos.x = xmatrix_rand() % cols;
-      pos.y = 0;
-      pos.age = 0;
-      pos.speed = 8;
-      pos.power = 2;
-      pos.decay = xmatrix_decay_rate;
-      threads.push_back(pos);
+      thread_t thread;
+      thread.x = xmatrix_rand() % cols;
+      thread.y = 0;
+      thread.age = 0;
+      thread.speed = 8;
+      thread.power = 2;
+      thread.decay = xmatrix_decay_rate;
+      layers[1].add_thread(thread);
     }
   }
 
   static void scene3_decode(std::vector<char32_t>& msg, const char* msg_u8) {
-    while (*msg_u8) {
+    while (msg.size() < scene3_max_message_size && *msg_u8) {
       std::uint32_t code = (byte) *msg_u8++;
       int remain;
       std::uint32_t min_code;
@@ -555,7 +681,7 @@ private:
         goto error_char;
       }
 
-      if (remain) code &= (1 << 6 - remain) - 1;
+      if (remain) code &= (1 << (6 - remain)) - 1;
       while (remain-- && 0x80 <= (byte) *msg_u8 && (byte) *msg_u8 < 0xC0)
         code = code << 6 | (*msg_u8++ & 0x3F);
       if (code < min_code) goto error_char;
@@ -570,7 +696,7 @@ public:
     std::vector<char32_t> msg;
     scene3_decode(msg, msg_u8);
     scene3_initialize(msg);
-    std::size_t nchar = msg.size();
+    int nchar = (int) msg.size();
 
     int mode = 1, display_width = nchar + 1, display_height = 1;
     if (message_width < cols) {
@@ -589,7 +715,7 @@ public:
 
     int loop_max = scene3_initial_input + nchar * 5 + 130;
     for (int loop = 0; loop <= loop_max; loop++) {
-      int i = 0, type = 1;
+      int type = 1;
       if (loop == loop_max) type = 2;
 
       int x0 = (cols - display_width) / 2, y0 = (rows - display_height) / 2;
@@ -639,9 +765,7 @@ public:
       }
 
       scene3_add_thread();
-      thread_step();
-      resolve();
-      update();
+      render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
   }
@@ -659,6 +783,10 @@ void trap_sigwinch(int) {
   buff.initialize();
   buff.redraw();
 }
+
+}
+
+using namespace cxxmatrix;
 
 int main(int argc, char** argv) {
   buff.initialize();
