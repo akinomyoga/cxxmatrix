@@ -208,8 +208,10 @@ private:
   bool bold;
   void sgr0() {
     std::fprintf(file, "\x1b[H\x1b[m");
+    px = py = 0;
     fg = 0;
     bg = 0;
+    bold = false;
   }
   void set_color(tcell_t const& tcell) {
     if (tcell.bg != this->bg) {
@@ -419,6 +421,23 @@ public:
     this->draw_content();
   }
 
+  bool term_altscreen = false;
+  void term_leave() {
+    if (!term_altscreen) return;
+    term_altscreen = false;
+    std::fprintf(file, "\x1b[%dH\n", rows);
+    std::fprintf(file, "\x1b[?1049l\x1b[?25h");
+    std::fflush(file);
+  }
+  void term_enter() {
+    if (term_altscreen) return;
+    term_altscreen = true;
+    std::fprintf(file, "\x1b[?1049h\x1b[?25l");
+    sgr0();
+    redraw();
+    std::fflush(file);
+  }
+
   void initialize() {
     struct winsize ws;
     ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
@@ -433,14 +452,12 @@ public:
   }
 
   void finalize() {
-    std::fprintf(file, "\x1b[%dH\n", rows);
-    std::fprintf(file, "\x1b[?1049l\x1b[?25h");
-    std::fflush(file);
+    term_leave();
   }
 
 
 private:
-  double scene2_scroll_func(double value) {
+  double s3rain_scroll_func(double value) {
     value = value / 200.0 - 10.0;
     constexpr double tanh_range = 2.0;
     static double th1 = std::tanh(tanh_range);
@@ -456,10 +473,10 @@ private:
   }
 
 public:
-  void scene2() {
+  void s3rain() {
     static byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
-    double const scr0 = scene2_scroll_func(0);
-    for (std::uint32_t loop = 0; ; loop++) {
+    double const scr0 = s3rain_scroll_func(0);
+    for (std::uint32_t loop = 0; loop < 2800; loop++) {
       // add new threads
       if (now % (1 + 150 / cols) == 0) {
         thread_t thread;
@@ -474,7 +491,7 @@ public:
         layers[layer].add_thread(thread);
       }
 
-      double const scr = scene2_scroll_func(loop) - scr0;
+      double const scr = s3rain_scroll_func(loop) - scr0;
       layers[0].scrollx = -std::round(500 * scr);
       layers[1].scrollx = -std::round(50 * scr);
       layers[2].scrollx = +std::round(200 * scr);
@@ -486,10 +503,15 @@ public:
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
+    std::uint32_t const wait = 8 * rows + 100;
+    for (std::uint32_t loop = 0; loop < wait; loop++) {
+      render_layers();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
   }
 
 private:
-  void scene1_fill_numbers(int stripe) {
+  void s1number_fill_numbers(int stripe) {
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         tcell_t& tcell = new_content[y * cols + x];
@@ -511,11 +533,11 @@ private:
   }
 
 public:
-  void scene1() {
+  void s1number() {
     int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2};
     for (int stripe: stripe_periods) {
       for (int i = 0; i < 20; i++) {
-        scene1_fill_numbers(stripe);
+        s1number_fill_numbers(stripe);
         render_direct();
         xmatrix_msleep(xmatrix_frame_interval);
       }
@@ -527,22 +549,30 @@ private:
     char32_t c;
     int w;
     int lines[7];
+
+    bool operator()(int x, int y) const {
+      return lines[y] & (1 << x);
+    }
   };
   struct glyph_t {
     int h, w;
     int render_width;
     glyph_definition_t const* def;
+  public:
+    bool operator()(int x, int y) const {
+      return def && (*def)(x, y);
+    }
   };
   std::vector<glyph_t> message;
   int message_width = 0;
-  int scene3_min_render_width = 0;
+  int s2banner_min_render_width = 0;
 
-  static constexpr int scene3_initial_input = 40;
-  static constexpr int scene3_cell_width = 10;
-  static constexpr int scene3_cell_height = 7;
-  static constexpr std::size_t scene3_max_message_size = 0x1000;
+  static constexpr int s2banner_initial_input = 40;
+  static constexpr int s2banner_cell_width = 10;
+  static constexpr int s2banner_cell_height = 7;
+  static constexpr std::size_t s2banner_max_message_size = 0x1000;
 
-  void scene3_initialize(std::vector<char32_t> const& msg) {
+  void s2banner_initialize(std::vector<char32_t> const& msg) {
     static glyph_definition_t glyph_defs[] = {
 #include "glyph.inl"
     };
@@ -587,41 +617,40 @@ private:
         }
       }
 
-      if (min_width >= scene3_cell_width * 3 / 2) break;
+      if (min_width >= s2banner_cell_width * 3 / 2) break;
       rest -= min_width_count;
       if (rest < 0) break;
 
       for (glyph_t& g: message)
         if (g.render_width == min_width) g.render_width++;
       message_width += min_width_count;
-      scene3_min_render_width = min_width + 1;
+      s2banner_min_render_width = min_width + 1;
     }
   }
 
-  void scene3_write_letter(int x0, int y0, glyph_t const& glyph, int type) {
+  void s2banner_write_letter(int x0, int y0, glyph_t const& glyph, int type) {
     x0 += (glyph.render_width - 1 - glyph.w) / 2;
     for (int y = 0; y < glyph.h; y++) {
       if (y0 + y >= rows) continue;
       for (int x = 0; x < glyph.w; x++) {
         if (x0 + x >= cols) continue;
-        if (!(glyph.def && glyph.def->lines[y] & (1 << x))) continue;
-        scene3_set_char(x0, y0, x, y, type);
+        if (glyph(x, y)) s2banner_set_char(x0, y0, x, y, type);
       }
     }
   }
 
-  void scene3_write_caret(int x0, int y0, bool set, int type) {
-    x0 += std::max(0, (scene3_min_render_width - 1 - scene3_cell_width) / 2);
-    for (int y = 0; y < scene3_cell_height; y++) {
+  void s2banner_write_caret(int x0, int y0, bool set, int type) {
+    x0 += std::max(0, (s2banner_min_render_width - 1 - s2banner_cell_width) / 2);
+    for (int y = 0; y < s2banner_cell_height; y++) {
       if (y0 + y >= rows) continue;
-      for (int x = 0; x < scene3_cell_width - 1; x++) {
+      for (int x = 0; x < s2banner_cell_width - 1; x++) {
         if (x0 + x >= cols) continue;
-        scene3_set_char(x0, y0, x, y, set ? type : 0);
+        s2banner_set_char(x0, y0, x, y, set ? type : 0);
       }
     }
   }
 
-  void scene3_put_char(int x0, int y0, int x, int y, int type, char32_t uchar) {
+  void s2banner_put_char(int x0, int y0, int x, int y, int type, char32_t uchar) {
     if (type == 0) {
       cell_t& cell = layers[0].cell(x0 + x, y0 + y);
       cell.c = ' ';
@@ -633,27 +662,27 @@ private:
       cell.decay = 2;
       cell.flags = 0;
     } else if (type == 2) {
-      scene3_put_char(x0, y0, x, y, uchar, 1);
+      s2banner_put_char(x0, y0, x, y, uchar, 1);
 
       thread_t thread;
       thread.x = x0 + x;
       thread.y = y0 + y;
       thread.age = 0;
-      thread.speed = scene3_cell_height - y;
+      thread.speed = s2banner_cell_height - y;
       if (thread.speed > 2) thread.speed += xmatrix_rand() % 3 - 1;
       thread.power = 2.0 / 3.0;
       thread.decay = 3;
       layers[1].add_thread(thread);
     }
   }
-  void scene3_set_char(int x0, int y0, int x, int y, int type) {
+  void s2banner_set_char(int x0, int y0, int x, int y, int type) {
     if (type == 0)
-      scene3_put_char(x0, y0, x, y, type, ' ');
+      s2banner_put_char(x0, y0, x, y, type, ' ');
     else
-      scene3_put_char(x0, y0, x, y, type, xmatrix_rand_char());
+      s2banner_put_char(x0, y0, x, y, type, xmatrix_rand_char());
   }
 
-  void scene3_add_thread() {
+  void s2banner_add_thread() {
     if (now % (1 + 2000 / cols) == 0) {
       thread_t thread;
       thread.x = xmatrix_rand() % cols;
@@ -666,8 +695,8 @@ private:
     }
   }
 
-  static void scene3_decode(std::vector<char32_t>& msg, const char* msg_u8) {
-    while (msg.size() < scene3_max_message_size && *msg_u8) {
+  static void s2banner_decode(std::vector<char32_t>& msg, const char* msg_u8) {
+    while (msg.size() < s2banner_max_message_size && *msg_u8) {
       std::uint32_t code = (byte) *msg_u8++;
       int remain;
       std::uint32_t min_code;
@@ -705,16 +734,16 @@ private:
     }
   }
 public:
-  void scene3(const char* msg_u8) {
+  void s2banner(const char* msg_u8) {
     std::vector<char32_t> msg;
-    scene3_decode(msg, msg_u8);
-    scene3_initialize(msg);
+    s2banner_decode(msg, msg_u8);
+    s2banner_initialize(msg);
     int nchar = (int) msg.size();
 
     int mode = 1, display_width = nchar + 1, display_height = 1;
     if (message_width < cols) {
       nchar = message.size();
-      display_width = message_width + scene3_min_render_width;
+      display_width = message_width + s2banner_min_render_width;
       display_height = message[0].h;
       mode = 0;
     } else if (nchar * 2 < cols) {
@@ -726,7 +755,7 @@ public:
     int input_index = -1;
     int input_time = 0;
 
-    int loop_max = scene3_initial_input + nchar * 5 + 130;
+    int loop_max = s2banner_initial_input + nchar * 5 + 130;
     for (int loop = 0; loop <= loop_max; loop++) {
       int type = 1;
       if (loop == loop_max) type = 2;
@@ -735,7 +764,7 @@ public:
       if (mode != 0 && xmatrix_rand() % 20 == 0)
         y0 += xmatrix_rand() % 7 - 3;
       for (int i = 0; i < nchar; i++) {
-        if ((loop - scene3_initial_input) / 5 <= i) break;
+        if ((loop - s2banner_initial_input) / 5 <= i) break;
 
         bool caret_moved = false;
         if (input_index < i) {
@@ -749,8 +778,8 @@ public:
           {
             glyph_t const& g = message[i];
             if (caret_moved)
-              scene3_write_caret(x0, y0, false, type);
-            scene3_write_letter(x0, y0, g, type);
+              s2banner_write_caret(x0, y0, false, type);
+            s2banner_write_letter(x0, y0, g, type);
             x0 += g.render_width;
           }
           break;
@@ -758,7 +787,7 @@ public:
           {
             char32_t c = msg[i];
             if (U'a' <= c && c <= U'z') c = c - U'a' + U'A';
-            scene3_put_char(x0, y0, 0, 0, type, c);
+            s2banner_put_char(x0, y0, 0, 0, type, c);
           }
           x0 += mode;
           break;
@@ -768,16 +797,16 @@ public:
       switch (mode) {
       case 0:
         // if (!((loop - input_time) / 25 & 1))
-        //   scene3_write_caret(x0, y0, true);
-        scene3_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
-        //scene3_write_caret(x0, y0, true);
+        //   s2banner_write_caret(x0, y0, true);
+        s2banner_write_caret(x0, y0, !((loop - input_time) / 25 & 1), type);
+        //s2banner_write_caret(x0, y0, true);
         break;
       default:
-        scene3_put_char(x0, y0, 0, 0, type, U'\u2589');
+        s2banner_put_char(x0, y0, 0, 0, type, U'\u2589');
         break;
       }
 
-      scene3_add_thread();
+      s2banner_add_thread();
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
@@ -850,7 +879,7 @@ private:
     int ox = cols / 2, oy = rows / 2;
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
-        cell_t& cell = layers[2].cell(x, y);
+        cell_t& cell = layers[2].rcell(x, y);
 
         double const x1 = 0.5 * (x - ox);
         double const y1 = oy - y;
@@ -897,9 +926,9 @@ public:
     double distance = 1.0;
 
     std::uint32_t loop;
-    for (loop = 0; ; loop++) {
+    for (loop = 0; loop < 2000; loop++) {
       distance += 1.0 * (loop > 1500 ? distance * 0.01 : 0.04);
-      time += 0.01 * distance;
+      time += 0.005 * distance;
       s4conway_board.step(time);
       s4conway_frame_mesh(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
       render_layers();
@@ -921,22 +950,33 @@ void trap_sigwinch(int) {
   buff.initialize();
   buff.redraw();
 }
-
+void traptstp(int sig) {
+  buff.term_leave();
+  std::signal(sig, SIG_DFL);
+  std::raise(sig);
 }
+void trapcont(int) {
+  buff.term_enter();
+  std::signal(SIGTSTP, traptstp);
+}
+
+} /* end of namespace cxxmatrix */
 
 using namespace cxxmatrix;
 
 int main(int argc, char** argv) {
-  buff.initialize();
-  std::fprintf(buff.file, "\x1b[?1049h\x1b[?25l");
-  buff.redraw();
   std::signal(SIGINT, trap_sigint);
   std::signal(SIGWINCH, trap_sigwinch);
+  std::signal(SIGTSTP, traptstp);
+  std::signal(SIGCONT, trapcont);
 
-  //buff.scene1();
+  buff.initialize();
+  buff.term_enter();
+
+  buff.s1number();
   for (int i = 1; i < argc; i++)
-    buff.scene3(argv[i]);
-  //buff.scene2();
+    buff.s2banner(argv[i]);
+  buff.s3rain();
   buff.s4conway();
 
   buff.finalize();
