@@ -9,9 +9,16 @@ function output_glyph(_, tail, offset, len, i, j, x, y, l) {
   while (match(tail, /^[^[:space:]]+/) > 0) {
     len = RLENGTH;
 
-    c = substr(tail, 1, 1);
-    if (c ~ /[\\\']/) c = "\\" c;
+    c = substr(tail, 1, RLENGTH);
+    if (c ~ /^U\+.*$/) {
+      c = "\\U" sprintf("%08x", strtonum("0x" substr(c, 3)));
+    } else if (c ~ /^[\\\']/) {
+      c = "\\" substr(c, 1, 1);
+    } else {
+      c = substr(c, 1, 1);
+    }
     printf("{U'%s', %d, {", c, len);
+
     for (i = 0; i < 7; i++) {
       x = substr(data[i], offset + 1, len);
       l = length(x);
