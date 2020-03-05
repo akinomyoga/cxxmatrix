@@ -20,7 +20,7 @@ namespace cxxmatrix {
 
 constexpr int xmatrix_frame_interval = 20;
 constexpr int xmatrix_decay_rate = 10;
-constexpr int xmatrix_cell_power_max = 4;
+constexpr int xmatrix_cell_power_max = 10;
 
 typedef uint8_t byte;
 
@@ -68,18 +68,28 @@ struct tcell_t {
   int diffuse = 0;
 };
 
+enum cell_flags
+  {
+   cflag_disable_bold = 0x1,
+  };
+
 struct cell_t {
   char32_t c = U' ';
   int birth = 0; // 設置時刻
-  int power = 0; // 初期の明るさ
+  double power = 0; // 初期の明るさ
   int decay = xmatrix_decay_rate; // 消滅時間
+  std::uint32_t flags = 0;
+
   int stage = 0; // 現在の消滅段階 (0..10)
   int level = 0; // 現在の明るさ(瞬き処理の前) (0..10)
+
 };
 
 struct thread_t {
   int x, y;
-  int age, speed, power, decay;
+  int age, speed;
+  double power;
+  int decay;
 };
 
 struct layer_t {
@@ -136,6 +146,7 @@ public:
         cell.birth = now;
         cell.power = pos.power;
         cell.decay = pos.decay;
+        cell.flags = 0;
         cell.c = xmatrix_rand_char();
         pos.y++;
       }
@@ -156,7 +167,7 @@ public:
           continue;
         }
 
-        cell.level = 1 + (cell.stage - 1) * cell.power / xmatrix_cell_power_max;
+        cell.level = std::round(1 + (cell.stage - 1) * cell.power);
         if (xmatrix_rand() % 20 == 0)
           cell.c = xmatrix_rand_char();
       }
@@ -376,7 +387,7 @@ private:
           level = xmatrix_rand() % 6 ? 1 : 0;
 
         tcell.fg = color_table[level];
-        tcell.bold = lcell->stage > 5;
+        tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 5;
 
         tcell.diffuse += level / 3;
         add_diffuse(x - 1, y, level / 3 - 1);
@@ -456,7 +467,7 @@ public:
         thread.y = 0;
         thread.age = 0;
         thread.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
-        thread.power = xmatrix_cell_power_max * 2 / thread.speed;
+        thread.power = 2.0 / thread.speed;
         thread.decay = xmatrix_decay_rate;
 
         int const layer = thread.speed < 3 ? 0 : thread.speed < 5 ? 1 : 2;
@@ -489,8 +500,9 @@ private:
         } else {
           cell.c = U'0' + xmatrix_rand() % 10;
           cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
-          cell.power = xmatrix_cell_power_max;
+          cell.power = 1.0;
           cell.decay = xmatrix_decay_rate;
+          cell.flags = 0;
           tcell.c = cell.c;
           tcell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
         }
@@ -617,8 +629,9 @@ private:
       cell_t& cell = layers[0].cell(x0 + x, y0 + y);
       cell.c = uchar;
       cell.birth = now;
-      cell.power = xmatrix_cell_power_max;
+      cell.power = 1.0;
       cell.decay = 2;
+      cell.flags = 0;
     } else if (type == 2) {
       scene3_put_char(x0, y0, x, y, uchar, 1);
 
@@ -628,7 +641,7 @@ private:
       thread.age = 0;
       thread.speed = scene3_cell_height - y;
       if (thread.speed > 2) thread.speed += xmatrix_rand() % 3 - 1;
-      thread.power = xmatrix_cell_power_max * 2 / 3;
+      thread.power = 2.0 / 3.0;
       thread.decay = 3;
       layers[1].add_thread(thread);
     }
@@ -647,7 +660,7 @@ private:
       thread.y = 0;
       thread.age = 0;
       thread.speed = 8;
-      thread.power = 2;
+      thread.power = 0.5;
       thread.decay = xmatrix_decay_rate;
       layers[1].add_thread(thread);
     }
@@ -769,6 +782,131 @@ public:
       xmatrix_msleep(xmatrix_frame_interval);
     }
   }
+
+private:
+  struct conway_board_t {
+    int width = 100, height = 100;
+    std::vector<byte> data1;
+    std::vector<byte> data2;
+
+  public:
+    void initialize() {
+      data1.resize(width * height);
+      data2.resize(width * height);
+      std::generate(data1.begin(), data1.end(), [] () { return xmatrix_rand() & 1; });
+    }
+    byte const& operator()(int x, int y) const {
+      return data1[mod(y, height) * width + mod(x, width)];
+    }
+
+  private:
+    byte& get1(int x, int y) {
+      return data1[mod(y, height) * width + mod(x, width)];
+    }
+    byte& get2(int x, int y) {
+      return data2[mod(y, height) * width + mod(x, width)];
+    }
+
+  public:
+    std::uint32_t time = 1.0;
+    void step(double time) {
+      if (time < this->time) return;
+      this->time++;
+
+      for (int y = 0; y < height; y++) {
+        for (int x = 0; x < width; x++) {
+          int count = 0;
+          if (get1(x + 1, y)) count++;
+          if (get1(x - 1, y)) count++;
+          if (get1(x, y + 1)) count++;
+          if (get1(x, y - 1)) count++;
+          if (get1(x + 1, y + 1)) count++;
+          if (get1(x + 1, y - 1)) count++;
+          if (get1(x - 1, y + 1)) count++;
+          if (get1(x - 1, y - 1)) count++;
+          get2(x, y) = count == 2 ? get1(x, y) : count == 3 ? 1 : 0;
+        }
+      }
+      data1.swap(data2);
+
+      double const prob = (width / 100.0) * (height / 100.0);
+      if (xmatrix_rand() % std::min<int>(1, 100 / prob)== 0) {
+        int const x0 = xmatrix_rand() % width;
+        int const y0 = xmatrix_rand() % height;
+        std::uint32_t value = xmatrix_rand();
+        for (int a = 0; a < 4; a++) {
+          for (int b = 0; b < 4; b++) {
+            get1(x0 + a, y0 + b) = value & 1;
+            value >>= 1;
+          }
+        }
+      }
+    }
+  };
+
+  conway_board_t s4conway_board;
+
+  void s4conway_frame_mesh(double theta, double scal, double power) {
+    int ox = cols / 2, oy = rows / 2;
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        cell_t& cell = layers[2].cell(x, y);
+
+        double const x1 = 0.5 * (x - ox);
+        double const y1 = oy - y;
+        double const u = 0.5 + scal * (x1 * std::cos(theta) - y1 * std::sin(theta));
+        double const v = 0.5 + scal * (y1 * std::cos(theta) + x1 * std::sin(theta));
+        if (s4conway_board(std::ceil(u), std::ceil(v))) {
+          cell.c = xmatrix_rand_char();
+          cell.birth = now;
+          cell.power = power;
+          cell.decay = 10;
+          cell.flags = cflag_disable_bold;
+          continue;
+        }
+
+        if (power >= 0.4) {
+          double const dx1A = 0.25, dy1A = +0.5;
+          double const dx1B = 0.25, dy1B = -0.5;
+          double const duA = scal * (dx1A * std::cos(theta) - dy1A * std::sin(theta));
+          double const dvA = scal * (dy1A * std::cos(theta) + dx1A * std::sin(theta));
+          double const duB = scal * (dx1B * std::cos(theta) - dy1B * std::sin(theta));
+          double const dvB = scal * (dy1B * std::cos(theta) + dx1B * std::sin(theta));
+          bool sec = std::ceil(u + duA) != std::ceil(u - duA) ||
+            std::ceil(v + dvA) != std::ceil(v - dvA) ||
+            std::ceil(u + duB) != std::ceil(u - duB) ||
+            std::ceil(v + dvB) != std::ceil(v - dvB);
+          if (sec) {
+            cell.c = xmatrix_rand_char();
+            cell.birth = now;
+            cell.power = power * 0.2;
+            cell.decay = 10;
+            cell.flags = cflag_disable_bold;
+            continue;
+          }
+        }
+
+        cell.c = ' ';
+      }
+    }
+  }
+public:
+  void s4conway() {
+    s4conway_board.initialize();
+    double time = 0.0;
+    double distance = 1.0;
+
+    std::uint32_t loop;
+    for (loop = 0; ; loop++) {
+      distance += 1.0 * (loop > 1500 ? distance * 0.01 : 0.04);
+      time += 0.01 * distance;
+      s4conway_board.step(time);
+      s4conway_frame_mesh(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
+      render_layers();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
+  }
+
 };
 
 buffer buff;
@@ -795,10 +933,11 @@ int main(int argc, char** argv) {
   std::signal(SIGINT, trap_sigint);
   std::signal(SIGWINCH, trap_sigwinch);
 
-  buff.scene1();
+  //buff.scene1();
   for (int i = 1; i < argc; i++)
     buff.scene3(argv[i]);
-  buff.scene2();
+  //buff.scene2();
+  buff.s4conway();
 
   buff.finalize();
   return 0;
