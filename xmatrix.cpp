@@ -5,6 +5,7 @@
 #include <cstdlib>
 #include <cstring>
 #include <cassert>
+#include <cmath>
 
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -15,6 +16,10 @@
 #include <iterator>
 #include <random>
 #include <limits>
+
+// s5mandel
+#include <complex>
+#include <numeric>
 
 namespace cxxmatrix {
 
@@ -31,11 +36,14 @@ void xmatrix_msleep(int msec) {
   nanosleep(&tv, NULL);
 }
 
-std::uint32_t xmatrix_rand() {
+std::mt19937& xmatrix_urbg() {
   static std::random_device seed_gen;
   static std::mt19937 engine(seed_gen());
+  return engine;
+}
+std::uint32_t xmatrix_rand() {
   static std::uniform_int_distribution<std::uint32_t> dist(0, std::numeric_limits<std::uint32_t>::max());
-  return dist(engine);
+  return dist(xmatrix_urbg());
   //return std::rand();
 }
 
@@ -923,7 +931,7 @@ public:
   void s4conway() {
     s4conway_board.initialize();
     double time = 0.0;
-    double distance = 1.0;
+    double distance = 0.48;
 
     std::uint32_t loop;
     for (loop = 0; loop < 2000; loop++) {
@@ -934,8 +942,230 @@ public:
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
+    for (loop = 0; loop < 100; loop++) {
+      render_layers();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
   }
 
+private:
+  class mandelbrot_t {
+    int cols = 0, rows = 0;
+    std::vector<double> data;
+    double scale;
+    double theta;
+
+    bool prev_avail = false;
+    std::vector<double> data_new;
+  public:
+    void resize(int cols, int rows) {
+      if (cols == this->cols && rows == this->rows) return;
+      this->cols = cols;
+      this->rows = rows;
+      this->data.resize(cols * rows);
+      this->data_new.resize(cols * rows);
+      this->prev_avail = false;
+      std::fill(data.begin(), data.end(), -1.0);
+    }
+
+    double& get(int x, int y) {
+      return data[y * cols + x];
+    }
+    double const& get(int x, int y) const {
+      return const_cast<mandelbrot_t*>(this)->data[y * cols + x];
+    }
+
+  private:
+    static constexpr int max_iterate = 8000;
+
+    static int mandel(double u, double v) {
+      std::complex<double> const c(u, v);
+      std::complex<double> z = c;
+      int count = 0;
+      while (count < max_iterate) {
+        if (std::abs(z) > 2.0) break;
+        z = z * z + c;
+        count++;
+      }
+      return count;
+    }
+
+    double get_nearest(double x, double y) const {
+      x = std::round(x);
+      y = std::round(y);
+      if (x < 0 || cols <= x) return min_power;
+      if (y < 0 || rows <= y) return min_power;
+      return data[y * cols + x];
+    }
+
+    void resample_prev(double theta, double scale) {
+      if (!prev_avail) return;
+      double const dtheta = theta - this->theta;
+      double const dscale = scale / this->scale;
+      int const ox = cols / 2, oy = rows / 2;
+      double const u_x = +dscale * std::cos(dtheta) * 0.5 * 2.0;
+      double const u_y = -dscale * std::sin(dtheta)       * 2.0;
+      double const v_x = +dscale * std::sin(dtheta) * 0.5;
+      double const v_y = +dscale * std::cos(dtheta);
+      int const Na = 5, Nb = 5;
+      for (int y = 0; y < rows; y++) {
+        for (int x = 0; x < cols; x++) {
+          double const u = ox + (u_x * (x - ox) + u_y * (oy - y));
+          double const v = oy - (v_x * (x - ox) + v_y * (oy - y));
+
+          int count = 0;
+          double sum = 0.0;
+          for (int a = 0; a < Na; a++) {
+            for (int b = 0; b < Nb; b++) {
+              double const dx = (a + 0.5) / Na - 0.5;
+              double const dy = (b + 0.5) / Nb - 0.5;
+              double const u1 = u + u_x * dx + u_y * dy;
+              double const v1 = v + v_x * dx + v_y * dy;
+              double const value = get_nearest(u1, v1);
+              if (value >= 0.0) sum += value, count++;
+            }
+          }
+          data_new[y * cols + x] = count ? sum / count : -1.0;
+        }
+      }
+      data.swap(data_new);
+    }
+
+    bool close(double a, double b) const {
+      return std::abs(a - b) < range * 0.01;
+    }
+    bool resample_safe(int x, int y) const {
+      if (!prev_avail) return false;
+      if (x <= 0 || cols - 1 <= x) return false;
+      if (y <= 0 || rows - 1 <= y) return false;
+      double const value = get(x, y);
+      if (value == min_power || value < 0.0) return false;
+      if (!close(value, get(x + 1, y))) return false;
+      if (!close(value, get(x - 1, y))) return false;
+      if (!close(value, get(x, y + 1))) return false;
+      if (!close(value, get(x, y - 1))) return false;
+      if (!close(value, get(x + 1, y + 1))) return false;
+      if (!close(value, get(x + 1, y - 1))) return false;
+      if (!close(value, get(x - 1, y + 1))) return false;
+      if (!close(value, get(x - 1, y - 1))) return false;
+      return true;
+    }
+
+    std::vector<int> positions;
+  public:
+    void update_frame(double theta, double scale) {
+      this->resample_prev(theta, scale);
+
+      constexpr double u0 = -0.743643887037158704752191506114774;
+      constexpr double v0 = +0.131825904205311970493132056385139;
+      int const ox = cols / 2, oy = rows / 2;
+      double const u_x = +scale * std::cos(theta) * 0.5;
+      double const u_y = -scale * std::sin(theta);
+      double const v_x = +scale * std::sin(theta) * 0.5;
+      double const v_y = +scale * std::cos(theta);
+
+      positions.resize(cols * rows);
+      std::iota(positions.begin(), positions.end(), 0);
+      std::shuffle(positions.begin(), positions.end(), xmatrix_urbg());
+
+      int total_iterate = 0, processed = 0;
+      double min_value = 1.0;
+      double max_value = 0.0;
+      for (int pos: positions) {
+        processed++;
+        int const x = pos % cols;
+        int const y = pos / cols;
+        if (resample_safe(x, y)) continue;
+
+        double const u = u0 + (u_x * (x - ox) + u_y * (oy - y));
+        double const v = v0 + (v_x * (x - ox) + v_y * (oy - y));
+
+        int sum = 0;
+        int const Na = 1, Nb = 1;
+        for (int a = 0; a < Na; a++) {
+          for (int b = 0; b < Nb; b++) {
+            double const dx = (a + 0.5) / Na;
+            double const dy = (b + 0.5) / Nb;
+            double const u1 = u + u_x * dx + u_y * dy;
+            double const v1 = v + v_x * dx + v_y * dy;
+            sum += mandel(u1, v1);
+          }
+        }
+
+        double const power = (1.0 / max_iterate / Na / Nb) * sum;
+        get(x, y) = power;
+        min_value = std::min(min_value, power);
+        max_value = std::max(max_value, power);
+
+        total_iterate += sum;
+        if (total_iterate > 1000000 && (double) processed / positions.size() > 0.2) break;
+      }
+      this->prev_avail = true;
+      this->theta = theta;
+      this->scale = scale;
+      this->update_range(min_value, max_value);
+    }
+
+    static constexpr double mix_ratio = 0.2;
+    double min_power = 0.0;
+    double max_power = 1.0;
+    double range = 1.0;
+
+  public:
+    void update_range(double min_value, double max_value) {
+      this->min_power = (1.0 - mix_ratio) * min_power + mix_ratio * min_value;
+      this->max_power = (1.0 - mix_ratio) * max_power + mix_ratio * max_value;
+      this->range = std::max(max_power - min_power, 1.0 / max_iterate);
+    }
+
+    double operator()(int x, int y) const {
+      return std::clamp((data[y * cols + x] - min_power) / range, 0.0, 1.0);
+    }
+  };
+
+  static constexpr int s5mandel_max_count = 8000;
+  mandelbrot_t s5mandel_data;
+  void s5mandel_frame(double theta, double scale, double power_scale) {
+    s5mandel_data.resize(cols, rows);
+    s5mandel_data.update_frame(theta, scale);
+    for (int y = 0; y < rows; y++) {
+      for (int x = 0; x < cols; x++) {
+        cell_t& cell = layers[2].rcell(x, y);
+        double const power = s5mandel_data(x, y);
+        if (power < 0.05) {
+          cell.c = ' ';
+        } else {
+          cell.c = xmatrix_rand_char();
+          cell.birth = now;
+          cell.power = power * power_scale;
+          cell.decay = 10;
+          cell.flags = cflag_disable_bold;
+        }
+      }
+    }
+  }
+
+public:
+  void s5mandel() {
+    double const scale0 = 1e-15, scaleN = 50.0 / std::min(cols, rows);
+    std::uint32_t const nloop = 3000;
+    double const mag1 = std::pow(scaleN / scale0, 1.0 / nloop);
+
+    double scale = scale0;
+    double theta = 0.5;
+    std::uint32_t loop;
+    for (loop = 0; loop < nloop; loop++) {
+      scale *= mag1;
+      theta -= 0.01;
+      s5mandel_frame(theta, scale, std::min(0.05 * loop, 1.0));
+      render_layers();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
+    for (loop = 0; loop < 100; loop++) {
+      render_layers();
+      xmatrix_msleep(xmatrix_frame_interval);
+    }
+  }
 };
 
 buffer buff;
@@ -978,6 +1208,7 @@ int main(int argc, char** argv) {
     buff.s2banner(argv[i]);
   buff.s3rain();
   buff.s4conway();
+  buff.s5mandel();
 
   buff.finalize();
   return 0;
