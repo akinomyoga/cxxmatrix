@@ -3,15 +3,17 @@
 .PHONY: all clean
 all:
 
+CPPFLAGS = -MD -MP -MF $(@:.o=.dep)
 CXXFLAGS := -std=c++17 -Wall -Wextra -Os
 
-all: xmatrix.exe
+all: cxxmatrix
 
-xmatrix.exe: xmatrix.o
+-include $(wildcard *.dep)
+cxxmatrix: cxxmatrix.o
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
-xmatrix.o: xmatrix.cpp glyph.inl
-	$(CXX) $(CXXFLAGS) -c -o $@ $<
+cxxmatrix.o: cxxmatrix.cpp glyph.inl
+	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 glyph.inl: glyph.awk glyph.def
 	awk -f glyph.awk glyph.def > glyph.inl

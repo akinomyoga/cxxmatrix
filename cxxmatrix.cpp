@@ -14,12 +14,10 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
-#include <random>
-#include <limits>
 
-// s5mandel
-#include <complex>
-#include <numeric>
+#include "cxxmatrix.hpp"
+#include "mandel.hpp"
+#include "conway.hpp"
 
 namespace cxxmatrix {
 
@@ -27,45 +25,11 @@ constexpr int xmatrix_frame_interval = 20;
 constexpr int xmatrix_decay_rate = 10;
 constexpr int xmatrix_cell_power_max = 10;
 
-typedef uint8_t byte;
-
 void xmatrix_msleep(int msec) {
   struct timespec tv;
   tv.tv_sec = 0;
   tv.tv_nsec = msec * 1000000;
   nanosleep(&tv, NULL);
-}
-
-std::mt19937& xmatrix_urbg() {
-  static std::random_device seed_gen;
-  static std::mt19937 engine(seed_gen());
-  return engine;
-}
-std::uint32_t xmatrix_rand() {
-  static std::uniform_int_distribution<std::uint32_t> dist(0, std::numeric_limits<std::uint32_t>::max());
-  return dist(xmatrix_urbg());
-  //return std::rand();
-}
-
-int mod(int value, int modulo) {
-  value %= modulo;
-  if (value < 0) value += modulo;
-  return value;
-}
-
-char32_t xmatrix_rand_char() {
-  std::uint32_t r = xmatrix_rand() % 80;
-  if (r < 10)
-    return U'0' + r;
-  else
-    r -= 10;
-
-  if (r < 46)
-    return U'ｰ' + r;
-  else
-    r -= 46;
-
-  return U"<>*+.:=_|"[r % 9];
 }
 
 struct tcell_t {
@@ -119,8 +83,8 @@ public:
     return content[y * cols + x];
   }
   cell_t& rcell(int x, int y) {
-    x = mod(x + scrollx, cols);
-    y = mod(y + scrolly, rows);
+    x = util::mod(x + scrollx, cols);
+    y = util::mod(y + scrolly, rows);
     return cell(x, y);
   }
   cell_t const& cell(int x, int y) const {
@@ -141,21 +105,19 @@ public:
     threads.erase(
       std::remove_if(threads.begin(), threads.end(),
         [this] (auto const& pos) -> bool {
-          return pos.y < scrolly || rows + scrolly <= pos.y;
+          int const y = pos.y - scrolly;
+          return y < 0 || rows <= y;
         }), threads.end());
 
     // grow threads
     for (thread_t& pos : threads) {
       if (pos.age++ % pos.speed == 0) {
-        int const x = pos.x - scrollx;
-        int const y = pos.y - scrolly;
-        if (y < 0 || rows <= y || x < 0 || cols <= x) continue;
-        cell_t& cell = this->cell(mod(pos.x, cols), mod(pos.y, rows));
+        cell_t& cell = this->cell(util::mod(pos.x, cols), util::mod(pos.y, rows));
         cell.birth = now;
         cell.power = pos.power;
         cell.decay = pos.decay;
         cell.flags = 0;
-        cell.c = xmatrix_rand_char();
+        cell.c = util::rand_char();
         pos.y++;
       }
     }
@@ -176,8 +138,8 @@ public:
         }
 
         cell.level = std::round(1 + (cell.stage - 1) * cell.power);
-        if (xmatrix_rand() % 20 == 0)
-          cell.c = xmatrix_rand_char();
+        if (util::rand() % 20 == 0)
+          cell.c = util::rand_char();
       }
     }
   }
@@ -393,11 +355,11 @@ private:
         // 瞬き処理
         if (level >= twinkle) {
           int const decrease = 1 + std::ceil(level / xmatrix_cell_power_max * (twinkle - 1));
-          level -= xmatrix_rand() % std::min(level - 1, decrease);
+          level -= util::rand() % std::min(level - 1, decrease);
         } else if (level == 2)
-          level = xmatrix_rand() % 4 ? 2 : 1;
+          level = util::rand() % 4 ? 2 : 1;
         else
-          level = xmatrix_rand() % 6 ? 1 : 0;
+          level = util::rand() % 6 ? 1 : 0;
 
         tcell.fg = color_table[level];
         tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 5;
@@ -491,10 +453,10 @@ public:
       // add new threads
       if (now % (1 + 150 / cols) == 0) {
         thread_t thread;
-        thread.x = xmatrix_rand() % cols;
+        thread.x = util::rand() % cols;
         thread.y = 0;
         thread.age = 0;
-        thread.speed = speed_table[xmatrix_rand() % std::size(speed_table)];
+        thread.speed = speed_table[util::rand() % std::size(speed_table)];
         thread.power = 2.0 / thread.speed;
         thread.decay = xmatrix_decay_rate;
 
@@ -531,13 +493,13 @@ private:
           cell.c = ' ';
           tcell.c = ' ';
         } else {
-          cell.c = U'0' + xmatrix_rand() % 10;
-          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + xmatrix_rand_char() % xmatrix_decay_rate;
+          cell.c = U'0' + util::rand() % 10;
+          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + util::rand_char() % xmatrix_decay_rate;
           cell.power = 1.0;
           cell.decay = xmatrix_decay_rate;
           cell.flags = 0;
           tcell.c = cell.c;
-          tcell.fg = color_table[std::size(color_table) / 2 + xmatrix_rand_char() % 3];
+          tcell.fg = color_table[std::size(color_table) / 2 + util::rand_char() % 3];
         }
       }
     }
@@ -680,7 +642,7 @@ private:
       thread.y = y0 + y;
       thread.age = 0;
       thread.speed = s2banner_cell_height - y;
-      if (thread.speed > 2) thread.speed += xmatrix_rand() % 3 - 1;
+      if (thread.speed > 2) thread.speed += util::rand() % 3 - 1;
       thread.power = 2.0 / 3.0;
       thread.decay = 3;
       layers[1].add_thread(thread);
@@ -690,13 +652,13 @@ private:
     if (type == 0)
       s2banner_put_char(x0, y0, x, y, type, ' ');
     else
-      s2banner_put_char(x0, y0, x, y, type, xmatrix_rand_char());
+      s2banner_put_char(x0, y0, x, y, type, util::rand_char());
   }
 
   void s2banner_add_thread() {
     if (now % (1 + 2000 / cols) == 0) {
       thread_t thread;
-      thread.x = xmatrix_rand() % cols;
+      thread.x = util::rand() % cols;
       thread.y = 0;
       thread.age = 0;
       thread.speed = 8;
@@ -772,8 +734,8 @@ public:
       if (loop == loop_max) type = 2;
 
       int x0 = (cols - display_width) / 2, y0 = (rows - display_height) / 2;
-      if (mode != 0 && xmatrix_rand() % 20 == 0)
-        y0 += xmatrix_rand() % 7 - 3;
+      if (mode != 0 && util::rand() % 20 == 0)
+        y0 += util::rand() % 7 - 3;
       for (int i = 0; i < nchar; i++) {
         if ((loop - s2banner_initial_input) / 5 <= i) break;
 
@@ -824,71 +786,11 @@ public:
   }
 
 private:
-  struct conway_board_t {
-    int width = 100, height = 100;
-    std::vector<byte> data1;
-    std::vector<byte> data2;
-
-  public:
-    void initialize() {
-      data1.resize(width * height);
-      data2.resize(width * height);
-      std::generate(data1.begin(), data1.end(), [] () { return xmatrix_rand() & 1; });
-    }
-    byte const& operator()(int x, int y) const {
-      return data1[mod(y, height) * width + mod(x, width)];
-    }
-
-  private:
-    byte& get1(int x, int y) {
-      return data1[mod(y, height) * width + mod(x, width)];
-    }
-    byte& get2(int x, int y) {
-      return data2[mod(y, height) * width + mod(x, width)];
-    }
-
-  public:
-    std::uint32_t time = 1.0;
-    void step(double time) {
-      if (time < this->time) return;
-      this->time++;
-
-      for (int y = 0; y < height; y++) {
-        for (int x = 0; x < width; x++) {
-          int count = 0;
-          if (get1(x + 1, y)) count++;
-          if (get1(x - 1, y)) count++;
-          if (get1(x, y + 1)) count++;
-          if (get1(x, y - 1)) count++;
-          if (get1(x + 1, y + 1)) count++;
-          if (get1(x + 1, y - 1)) count++;
-          if (get1(x - 1, y + 1)) count++;
-          if (get1(x - 1, y - 1)) count++;
-          get2(x, y) = count == 2 ? get1(x, y) : count == 3 ? 1 : 0;
-        }
-      }
-      data1.swap(data2);
-
-      double const prob = (width / 100.0) * (height / 100.0);
-      if (xmatrix_rand() % std::min<int>(1, 100 / prob)== 0) {
-        int const x0 = xmatrix_rand() % width;
-        int const y0 = xmatrix_rand() % height;
-        std::uint32_t value = xmatrix_rand();
-        for (int a = 0; a < 4; a++) {
-          for (int b = 0; b < 4; b++) {
-            get1(x0 + a, y0 + b) = value & 1;
-            value >>= 1;
-          }
-        }
-      }
-    }
-  };
-
-  conway_board_t s4conway_board;
-
+  conway_t s4conway_board;
   void s4conway_frame_mesh(double theta, double scal, double power) {
     constexpr double xscale = 0.35;
     int ox = cols / 2, oy = rows / 2;
+
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         cell_t& cell = layers[2].rcell(x, y);
@@ -898,7 +800,7 @@ private:
         double const u = 0.5 + scal * (x1 * std::cos(theta) - y1 * std::sin(theta));
         double const v = 0.5 + scal * (y1 * std::cos(theta) + x1 * std::sin(theta));
         if (s4conway_board(std::ceil(u), std::ceil(v))) {
-          cell.c = xmatrix_rand_char();
+          cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power;
           cell.decay = 10;
@@ -918,7 +820,7 @@ private:
             std::ceil(u + duB) != std::ceil(u - duB) ||
             std::ceil(v + dvB) != std::ceil(v - dvB);
           if (sec) {
-            cell.c = xmatrix_rand_char();
+            cell.c = util::rand_char();
             cell.birth = now;
             cell.power = power * 0.2;
             cell.decay = 10;
@@ -949,214 +851,6 @@ public:
   }
 
 private:
-  class mandelbrot_t {
-    int cols = 0, rows = 0;
-    std::vector<double> data;
-    double scale;
-    double theta;
-
-    bool prev_avail = false;
-    std::vector<double> data_new;
-  public:
-    void resize(int cols, int rows) {
-      if (cols == this->cols && rows == this->rows) return;
-      this->cols = cols;
-      this->rows = rows;
-      this->data.resize(cols * rows);
-      this->data_new.resize(cols * rows);
-      this->prev_avail = false;
-      std::fill(data.begin(), data.end(), -1.0);
-    }
-
-    double& get(int x, int y) {
-      return data[y * cols + x];
-    }
-    double const& get(int x, int y) const {
-      return const_cast<mandelbrot_t*>(this)->data[y * cols + x];
-    }
-
-  private:
-    static constexpr int max_iterate = 5000;
-
-    static int mandel(double u, double v) {
-      std::complex<double> const c(u, v);
-      std::complex<double> z = c;
-      int count = 0;
-      while (count < max_iterate) {
-        if (std::abs(z) > 2.0) break;
-        z = z * z + c;
-        count++;
-      }
-      return std::max(0, count - 5);
-    }
-
-    double get_nearest(double x, double y) const {
-      x = std::round(x);
-      y = std::round(y);
-      if (x < 0 || cols <= x) return min_power;
-      if (y < 0 || rows <= y) return min_power;
-      return data[y * cols + x];
-    }
-
-    void resample_prev(double theta, double scale) {
-      if (!prev_avail) return;
-      double const dtheta = theta - this->theta;
-      double const dscale = scale / this->scale;
-      int const ox = cols / 2, oy = rows / 2;
-      double const u_x = +dscale * std::cos(dtheta) * 0.5 * 2.0;
-      double const u_y = -dscale * std::sin(dtheta)       * 2.0;
-      double const v_x = +dscale * std::sin(dtheta) * 0.5;
-      double const v_y = +dscale * std::cos(dtheta);
-      int const Na = 5, Nb = 5;
-      for (int y = 0; y < rows; y++) {
-        for (int x = 0; x < cols; x++) {
-          double const u = ox + (u_x * (x - ox) + u_y * (oy - y));
-          double const v = oy - (v_x * (x - ox) + v_y * (oy - y));
-
-          int count = 0;
-          double sum = 0.0;
-          for (int a = 0; a < Na; a++) {
-            for (int b = 0; b < Nb; b++) {
-              double const dx = (a + 0.5) / Na - 0.5;
-              double const dy = (b + 0.5) / Nb - 0.5;
-              double const u1 = u + u_x * dx + u_y * dy;
-              double const v1 = v + v_x * dx + v_y * dy;
-              double const value = get_nearest(u1, v1);
-              if (value >= 0.0) sum += value, count++;
-            }
-          }
-          data_new[y * cols + x] = count ? sum / count : -1.0;
-        }
-      }
-      data.swap(data_new);
-    }
-
-    bool close(double a, double b) const {
-      return std::abs(a - b) / std::abs(a + b) < range * 0.01;
-    }
-    bool resample_safe(int x, int y) const {
-      if (!prev_avail) return false;
-      if (x <= 0 || cols - 1 <= x) return false;
-      if (y <= 0 || rows - 1 <= y) return false;
-      double const value = get(x, y);
-      if (value == min_power || value < 0.0) return false;
-      if (!close(value, get(x + 1, y))) return false;
-      if (!close(value, get(x - 1, y))) return false;
-      if (!close(value, get(x, y + 1))) return false;
-      if (!close(value, get(x, y - 1))) return false;
-      if (!close(value, get(x + 1, y + 1))) return false;
-      if (!close(value, get(x + 1, y - 1))) return false;
-      if (!close(value, get(x - 1, y + 1))) return false;
-      if (!close(value, get(x - 1, y - 1))) return false;
-      return true;
-    }
-
-    std::vector<int> positions;
-  public:
-    void update_frame(double theta, double scale) {
-      this->resample_prev(theta, scale);
-
-      constexpr double u0 = -0.743643887037158704752191506114774;
-      constexpr double v0 = +0.131825904205311970493132056385139;
-      int const ox = cols / 2, oy = rows / 2;
-      double const u_x = +scale * std::cos(theta) * 0.5;
-      double const u_y = -scale * std::sin(theta);
-      double const v_x = +scale * std::sin(theta) * 0.5;
-      double const v_y = +scale * std::cos(theta);
-
-      positions.resize(cols * rows);
-      std::iota(positions.begin(), positions.end(), 0);
-      std::shuffle(positions.begin(), positions.end(), xmatrix_urbg());
-
-      int total_iterate = 0, processed = 0;
-      double min_value = 1.0;
-      double max_value = 0.0;
-      for (int pos: positions) {
-        processed++;
-        int const x = pos % cols;
-        int const y = pos / cols;
-        if (resample_safe(x, y)) continue;
-
-        double const u = u0 + (u_x * (x - ox) + u_y * (oy - y));
-        double const v = v0 + (v_x * (x - ox) + v_y * (oy - y));
-
-        int sum = 0;
-        int const Na = 1, Nb = 1;
-        for (int a = 0; a < Na; a++) {
-          for (int b = 0; b < Nb; b++) {
-            double const dx = (a + 0.5) / Na;
-            double const dy = (b + 0.5) / Nb;
-            double const u1 = u + u_x * dx + u_y * dy;
-            double const v1 = v + v_x * dx + v_y * dy;
-            sum += mandel(u1, v1);
-          }
-        }
-
-        double const power = (1.0 / max_iterate / Na / Nb) * sum;
-        get(x, y) = power;
-        min_value = std::min(min_value, power);
-        max_value = std::max(max_value, power);
-
-        total_iterate += sum;
-        if ((total_iterate > 1000000 && (double) processed / positions.size() > 0.2) ||
-          total_iterate > 1000000 * 5) break;
-      }
-      this->prev_avail = true;
-      this->theta = theta;
-      this->scale = scale;
-      this->update_range(min_value, max_value);
-    }
-
-    static constexpr double mix_ratio = 0.2;
-    double min_power = 0.0;
-    double max_power = 1.0;
-    double range = 1.0;
-
-    static constexpr std::size_t level_bins = 100;
-    std::vector<double> level_mapping;
-    std::vector<int> histogram;
-
-  public:
-    void update_range(double min_value, double max_value) {
-      this->min_power = (1.0 - mix_ratio) * min_power + mix_ratio * min_value;
-      this->max_power = (1.0 - mix_ratio) * max_power + mix_ratio * max_value;
-      this->range = std::max(max_power - min_power, 1.0 / max_iterate);
-
-      histogram.resize(level_bins);
-      level_mapping.resize(level_bins + 1);
-      std::fill(histogram.begin(), histogram.end(), 0);
-      int const max_bin_content = cols * rows / 10;
-      int count = 0;
-      for (double power: data) {
-        double const value = (power - min_power) / range;
-        if (value < 0.0 || 1.0 < value) continue;
-        auto& bin = histogram[std::min<int>(value * level_bins, level_bins - 1)];
-        if (bin < max_bin_content) bin++, count++;
-      }
-      int accum = 0, index = 0;
-      for (int h: histogram) {
-        level_mapping[index] = count ? (double) accum / count : (double) index / level_bins;
-        index++;
-        accum += h;
-      }
-      level_mapping.back() = 1.0;
-    }
-
-    double operator()(int x, int y) const {
-      double const value = std::clamp((data[y * cols + x] - min_power) / range, 0.0, 1.0);
-
-      // level_mapping 線形補間
-      double const frac = value * level_bins;
-      int const index = std::min<int>(std::ceil(frac), level_bins - 1);
-      double const p1 = level_mapping[index];
-      double const p2 = level_mapping[index + 1];
-      double const p = p1 + (frac - index) * (p2 - p1);
-      double const pscale = std::clamp(p - 0.2, 0.0, 0.7) / 0.7;
-
-      return value + 0.5 * (pscale * pscale - value);
-    }
-  };
-
   mandelbrot_t s5mandel_data;
   void s5mandel_frame(double theta, double scale, double power_scale) {
     s5mandel_data.resize(cols, rows);
@@ -1168,7 +862,7 @@ private:
         if (power < 0.05) {
           cell.c = ' ';
         } else {
-          cell.c = xmatrix_rand_char();
+          cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power * power_scale;
           cell.decay = 10;
@@ -1182,8 +876,8 @@ public:
   void s5mandel() {
     twinkle = 2;
 
-    double const scale0 = 1e-18, scaleN = 10.0 / std::min(cols, rows);
-    std::uint32_t const nloop = 2000;
+    double const scale0 = 1e-17, scaleN = 30.0 / std::min(cols, rows);
+    std::uint32_t const nloop = 3000;
     double const mag1 = std::pow(scaleN / scale0, 1.0 / nloop);
 
     double scale = scale0;

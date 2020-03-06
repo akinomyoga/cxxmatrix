@@ -2,4 +2,6 @@
 
 *.exe
 *.o
+*.dep
 /glyph.inl
+/cxxmatrix
