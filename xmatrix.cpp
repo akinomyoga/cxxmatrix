@@ -356,7 +356,9 @@ private:
   }
 
 public:
+  static constexpr int default_twinkle = 3;
   int now = 100;
+  int twinkle = 3;
 
 private:
   //byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
@@ -389,9 +391,10 @@ private:
         int level = lcell->level;
 
         // 瞬き処理
-        if (level > 2)
-          level -= xmatrix_rand() % (level > 5 ? 3 : 2);
-        else if (level == 2)
+        if (level >= twinkle) {
+          int const decrease = 1 + std::ceil(level / xmatrix_cell_power_max * (twinkle - 1));
+          level -= xmatrix_rand() % std::min(level - 1, decrease);
+        } else if (level == 2)
           level = xmatrix_rand() % 4 ? 2 : 1;
         else
           level = xmatrix_rand() % 6 ? 1 : 0;
@@ -884,12 +887,13 @@ private:
   conway_board_t s4conway_board;
 
   void s4conway_frame_mesh(double theta, double scal, double power) {
+    constexpr double xscale = 0.35;
     int ox = cols / 2, oy = rows / 2;
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         cell_t& cell = layers[2].rcell(x, y);
 
-        double const x1 = 0.5 * (x - ox);
+        double const x1 = xscale * (x - ox);
         double const y1 = oy - y;
         double const u = 0.5 + scal * (x1 * std::cos(theta) - y1 * std::sin(theta));
         double const v = 0.5 + scal * (y1 * std::cos(theta) + x1 * std::sin(theta));
@@ -903,8 +907,8 @@ private:
         }
 
         if (power >= 0.4) {
-          double const dx1A = 0.25, dy1A = +0.5;
-          double const dx1B = 0.25, dy1B = -0.5;
+          double const dx1A = 0.5 * xscale, dy1A = +0.5;
+          double const dx1B = 0.5 * xscale, dy1B = -0.5;
           double const duA = scal * (dx1A * std::cos(theta) - dy1A * std::sin(theta));
           double const dvA = scal * (dy1A * std::cos(theta) + dx1A * std::sin(theta));
           double const duB = scal * (dx1B * std::cos(theta) - dy1B * std::sin(theta));
@@ -942,10 +946,6 @@ public:
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
-    for (loop = 0; loop < 100; loop++) {
-      render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
-    }
   }
 
 private:
@@ -976,7 +976,7 @@ private:
     }
 
   private:
-    static constexpr int max_iterate = 8000;
+    static constexpr int max_iterate = 5000;
 
     static int mandel(double u, double v) {
       std::complex<double> const c(u, v);
@@ -987,7 +987,7 @@ private:
         z = z * z + c;
         count++;
       }
-      return count;
+      return std::max(0, count - 5);
     }
 
     double get_nearest(double x, double y) const {
@@ -1032,7 +1032,7 @@ private:
     }
 
     bool close(double a, double b) const {
-      return std::abs(a - b) < range * 0.01;
+      return std::abs(a - b) / std::abs(a + b) < range * 0.01;
     }
     bool resample_safe(int x, int y) const {
       if (!prev_avail) return false;
@@ -1098,7 +1098,8 @@ private:
         max_value = std::max(max_value, power);
 
         total_iterate += sum;
-        if (total_iterate > 1000000 && (double) processed / positions.size() > 0.2) break;
+        if ((total_iterate > 1000000 && (double) processed / positions.size() > 0.2) ||
+          total_iterate > 1000000 * 5) break;
       }
       this->prev_avail = true;
       this->theta = theta;
@@ -1111,26 +1112,58 @@ private:
     double max_power = 1.0;
     double range = 1.0;
 
+    static constexpr std::size_t level_bins = 100;
+    std::vector<double> level_mapping;
+    std::vector<int> histogram;
+
   public:
     void update_range(double min_value, double max_value) {
       this->min_power = (1.0 - mix_ratio) * min_power + mix_ratio * min_value;
       this->max_power = (1.0 - mix_ratio) * max_power + mix_ratio * max_value;
       this->range = std::max(max_power - min_power, 1.0 / max_iterate);
+
+      histogram.resize(level_bins);
+      level_mapping.resize(level_bins + 1);
+      std::fill(histogram.begin(), histogram.end(), 0);
+      int const max_bin_content = cols * rows / 10;
+      int count = 0;
+      for (double power: data) {
+        double const value = (power - min_power) / range;
+        if (value < 0.0 || 1.0 < value) continue;
+        auto& bin = histogram[std::min<int>(value * level_bins, level_bins - 1)];
+        if (bin < max_bin_content) bin++, count++;
+      }
+      int accum = 0, index = 0;
+      for (int h: histogram) {
+        level_mapping[index] = count ? (double) accum / count : (double) index / level_bins;
+        index++;
+        accum += h;
+      }
+      level_mapping.back() = 1.0;
     }
 
     double operator()(int x, int y) const {
-      return std::clamp((data[y * cols + x] - min_power) / range, 0.0, 1.0);
+      double const value = std::clamp((data[y * cols + x] - min_power) / range, 0.0, 1.0);
+
+      // level_mapping 線形補間
+      double const frac = value * level_bins;
+      int const index = std::min<int>(std::ceil(frac), level_bins - 1);
+      double const p1 = level_mapping[index];
+      double const p2 = level_mapping[index + 1];
+      double const p = p1 + (frac - index) * (p2 - p1);
+      double const pscale = std::clamp(p - 0.2, 0.0, 0.7) / 0.7;
+
+      return value + 0.5 * (pscale * pscale - value);
     }
   };
 
-  static constexpr int s5mandel_max_count = 8000;
   mandelbrot_t s5mandel_data;
   void s5mandel_frame(double theta, double scale, double power_scale) {
     s5mandel_data.resize(cols, rows);
     s5mandel_data.update_frame(theta, scale);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
-        cell_t& cell = layers[2].rcell(x, y);
+        cell_t& cell = layers[1].rcell(x, y);
         double const power = s5mandel_data(x, y);
         if (power < 0.05) {
           cell.c = ' ';
@@ -1147,8 +1180,10 @@ private:
 
 public:
   void s5mandel() {
-    double const scale0 = 1e-15, scaleN = 50.0 / std::min(cols, rows);
-    std::uint32_t const nloop = 3000;
+    twinkle = 2;
+
+    double const scale0 = 1e-18, scaleN = 10.0 / std::min(cols, rows);
+    std::uint32_t const nloop = 2000;
     double const mag1 = std::pow(scaleN / scale0, 1.0 / nloop);
 
     double scale = scale0;
@@ -1157,7 +1192,7 @@ public:
     for (loop = 0; loop < nloop; loop++) {
       scale *= mag1;
       theta -= 0.01;
-      s5mandel_frame(theta, scale, std::min(0.05 * loop, 1.0));
+      s5mandel_frame(theta, scale, std::min(0.01 * loop, 1.0));
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
@@ -1165,6 +1200,8 @@ public:
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
+
+    twinkle = default_twinkle;
   }
 };
 
