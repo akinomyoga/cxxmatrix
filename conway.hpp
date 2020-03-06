@@ -18,17 +18,15 @@ namespace cxxmatrix {
       data2.resize(width * height);
       std::generate(data1.begin(), data1.end(), [] () { return util::rand() & 1; });
     }
-    byte const& operator()(int x, int y) const {
-      return data1[util::mod(y, height) * width + util::mod(x, width)];
-    }
 
   private:
-    byte& get1(int x, int y) {
-      return data1[util::mod(y, height) * width + util::mod(x, width)];
+    int index(int x, int y) const {
+      return util::mod(y, height) * width + util::mod(x, width);
     }
-    byte& get2(int x, int y) {
-      return data2[util::mod(y, height) * width + util::mod(x, width)];
-    }
+    byte const& get1(int x, int y) const { return data1[index(x, y)]; }
+    byte const& get2(int x, int y) const { return data2[index(x, y)]; }
+    byte& get1(int x, int y) { return data1[index(x, y)]; }
+    byte& get2(int x, int y) { return data2[index(x, y)]; }
 
   public:
     std::uint32_t time = 1.0;
@@ -65,6 +63,49 @@ namespace cxxmatrix {
         }
       }
     }
+
+  private:
+    int origin_x, origin_y;
+  public:
+    void set_size(int cols, int rows) {
+      origin_x = cols / 2;
+      origin_y = rows / 2;
+    }
+
+  private:
+    static constexpr double xscale = 0.5 * 0.7;
+    static constexpr double yscale = -1.0;
+    double u_x, u_y, v_x, v_y;
+  public:
+    void set_transform(double scale, double theta) {
+      this->u_x = +scale * xscale * std::cos(theta);
+      this->u_y = -scale * yscale * std::sin(theta);
+      this->v_x = +scale * xscale * std::sin(theta);
+      this->v_y = +scale * yscale * std::cos(theta);
+    }
+
+    int get_pixel(int x, int y, double power) const {
+      double const u = 0.5 + u_x * (x - origin_x) + u_y * (y - origin_y);
+      double const v = 0.5 + v_x * (x - origin_x) + v_y * (y - origin_y);
+      if (get1(std::ceil(u), std::ceil(v))) return 1;
+
+      if (power >= 0.4) {
+        double const dx1A = 0.5, dy1A = +0.5;
+        double const dx1B = 0.5, dy1B = -0.5;
+        double const duA = dx1A * u_x + dy1A * u_y;
+        double const dvA = dy1A * v_x + dx1A * v_y;
+        double const duB = dx1B * u_x + dy1B * u_y;
+        double const dvB = dy1B * v_x + dx1B * v_y;
+        bool const sec = std::ceil(u + duA) != std::ceil(u - duA) ||
+          std::ceil(v + dvA) != std::ceil(v - dvA) ||
+          std::ceil(u + duB) != std::ceil(u - duB) ||
+          std::ceil(v + dvB) != std::ceil(v - dvB);
+        if (sec) return 2;
+      }
+
+      return 0;
+    }
+
   };
 }
 

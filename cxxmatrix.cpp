@@ -787,49 +787,31 @@ public:
 
 private:
   conway_t s4conway_board;
-  void s4conway_frame_mesh(double theta, double scal, double power) {
-    constexpr double xscale = 0.35;
-    int ox = cols / 2, oy = rows / 2;
-
+  void s4conway_frame(double theta, double scal, double power) {
+    s4conway_board.set_size(cols, rows);
+    s4conway_board.set_transform(scal, theta);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
         cell_t& cell = layers[2].rcell(x, y);
-
-        double const x1 = xscale * (x - ox);
-        double const y1 = oy - y;
-        double const u = 0.5 + scal * (x1 * std::cos(theta) - y1 * std::sin(theta));
-        double const v = 0.5 + scal * (y1 * std::cos(theta) + x1 * std::sin(theta));
-        if (s4conway_board(std::ceil(u), std::ceil(v))) {
+        switch (s4conway_board.get_pixel(x, y, power)) {
+        case 1:
           cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power;
           cell.decay = 10;
           cell.flags = cflag_disable_bold;
-          continue;
+          break;
+        case 2:
+          cell.c = util::rand_char();
+          cell.birth = now;
+          cell.power = power * 0.2;
+          cell.decay = 10;
+          cell.flags = cflag_disable_bold;
+          break;
+        default:
+          cell.c = ' ';
+          break;
         }
-
-        if (power >= 0.4) {
-          double const dx1A = 0.5 * xscale, dy1A = +0.5;
-          double const dx1B = 0.5 * xscale, dy1B = -0.5;
-          double const duA = scal * (dx1A * std::cos(theta) - dy1A * std::sin(theta));
-          double const dvA = scal * (dy1A * std::cos(theta) + dx1A * std::sin(theta));
-          double const duB = scal * (dx1B * std::cos(theta) - dy1B * std::sin(theta));
-          double const dvB = scal * (dy1B * std::cos(theta) + dx1B * std::sin(theta));
-          bool sec = std::ceil(u + duA) != std::ceil(u - duA) ||
-            std::ceil(v + dvA) != std::ceil(v - dvA) ||
-            std::ceil(u + duB) != std::ceil(u - duB) ||
-            std::ceil(v + dvB) != std::ceil(v - dvB);
-          if (sec) {
-            cell.c = util::rand_char();
-            cell.birth = now;
-            cell.power = power * 0.2;
-            cell.decay = 10;
-            cell.flags = cflag_disable_bold;
-            continue;
-          }
-        }
-
-        cell.c = ' ';
       }
     }
   }
@@ -844,7 +826,7 @@ public:
       distance += 1.0 * (loop > 1500 ? distance * 0.01 : 0.04);
       time += 0.005 * distance;
       s4conway_board.step(time);
-      s4conway_frame_mesh(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
+      s4conway_frame(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
       render_layers();
       xmatrix_msleep(xmatrix_frame_interval);
     }
