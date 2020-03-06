@@ -253,16 +253,51 @@ private:
     py = y;
   }
 
+private:
+
+  static bool is_changed(tcell_t const& ncell, tcell_t const& ocell) {
+    if (ncell.c != ocell.c || ncell.bg != ocell.bg) return true;
+    if (ncell.c == ' ') return false;
+    if (ncell.fg != ocell.fg || ncell.bold != ocell.bold) return true;
+    return false;
+  }
+  bool term_draw_cell(int x, int y, std::size_t index, bool force_write) {
+    tcell_t& ncell = new_content[index];
+    tcell_t& ocell = old_content[index];
+    if (force_write || is_changed(ncell, ocell)) {
+      goto_xy(x, y);
+      set_color(ncell);
+      put_utf8(ncell.c);
+      px++;
+      ocell = ncell;
+      return true;
+    }
+    return false;
+  }
+
 public:
   void redraw() {
     goto_xy(0, 0);
     for (int y = 0; y < rows; y++) {
       for (int x = 0; x < cols; x++) {
+        // 行末 xenl 対策
+        if (y == rows - 1) {
+          if (x == cols - 2) {
+            tcell_t const& cell = new_content[y * cols + x + 1];
+            set_color(cell);
+            put_utf8(cell.c);
+            std::fprintf(file, "\b\x1b[@");
+          } else if (x == cols -1) {
+            continue;
+          }
+        }
+
         tcell_t const& tcell = new_content[y * cols + x];
         set_color(tcell);
         put_utf8(tcell.c);
       }
     }
+    std::fprintf(file, "\x1b[H");
     std::fflush(file);
 
     old_content.resize(new_content.size());
@@ -272,17 +307,19 @@ public:
 
   void draw_content() {
     for (int y = 0; y < rows; y++) {
-      for (int x = 0; x < cols; x++) {
+      for (int x = 0; x < cols - 1; x++) {
         std::size_t const index = y * cols + x;
-        tcell_t const& ncell = new_content[index];
-        tcell_t const& ocell = old_content[index];
-        if (ncell.bg != ocell.bg || ncell.c != ocell.c || (ncell.c != ' ' && ncell.fg != ocell.fg)) {
-          goto_xy(x, y);
-          set_color(ncell);
-          put_utf8(ncell.c);
-          px++;
-          old_content[index] = new_content[index];
+
+        bool dirty = true;
+
+        // 行末 xenl 対策
+        if (x == cols - 2 && term_draw_cell(x, y, index + 1, false)) {
+          std::fprintf(file, "\b\x1b[@");
+          px--;
+          dirty = true;
         }
+
+        term_draw_cell(x, y, index, dirty);
       }
     }
     std::fflush(file);
