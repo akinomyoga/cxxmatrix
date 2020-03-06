@@ -22,7 +22,7 @@
 namespace cxxmatrix {
 
 constexpr int xmatrix_frame_interval = 20;
-constexpr int xmatrix_decay_rate = 10;
+constexpr int xmatrix_default_decay = 100; // 既定の寿命
 constexpr int xmatrix_cell_power_max = 10;
 
 void xmatrix_msleep(int msec) {
@@ -49,12 +49,11 @@ struct cell_t {
   char32_t c = U' ';
   int birth = 0; // 設置時刻
   double power = 0; // 初期の明るさ
-  int decay = xmatrix_decay_rate; // 消滅時間
+  double decay = xmatrix_default_decay; // 寿命
   std::uint32_t flags = 0;
 
-  int stage = 0; // 現在の消滅段階 (0..10)
-  int level = 0; // 現在の明るさ(瞬き処理の前) (0..10)
-
+  double stage = 0; // 現在の消滅段階 (0..1.0)
+  double current_power = 0; // 現在の明るさ(瞬き処理の前) (0..1.0)
 };
 
 struct thread_t {
@@ -131,13 +130,13 @@ public:
         if (cell.c == ' ') continue;
 
         int const age = now - cell.birth;
-        cell.stage = 10 - age / cell.decay;
-        if (cell.stage < 1) {
+        cell.stage = 1.0 - age / cell.decay;
+        if (cell.stage < 0.0) {
           cell.c = ' ';
           continue;
         }
 
-        cell.level = std::round(1 + (cell.stage - 1) * cell.power);
+        cell.current_power = cell.power * cell.stage;
         if (util::rand() % 20 == 0)
           cell.c = util::rand_char();
       }
@@ -312,15 +311,15 @@ private:
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
         tcell_t& tcell = new_content[index];
-        tcell.bg = color_table[std::min(tcell.diffuse / 3, 3)];
+        tcell.bg = color_table[std::min<int>(0.4 * tcell.diffuse, 3)];
       }
     }
   }
 
 public:
-  static constexpr int default_twinkle = 3;
+  static constexpr double default_twinkle = 0.2;
   int now = 100;
-  int twinkle = 3;
+  double twinkle = default_twinkle;
 
 private:
   //byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
@@ -350,19 +349,21 @@ private:
 
         tcell.c = lcell->c;
 
-        int level = lcell->level;
+        // current_power = 現在の輝度 (瞬き)
+        double current_power = lcell->current_power;
+        if (twinkle != 0.0) {
+          current_power -= std::hypot(current_power * twinkle, 0.1) * util::randf();
+          if (current_power < 0.0) current_power = 0.0;
+        }
 
-        // 瞬き処理
-        if (level >= twinkle) {
-          int const decrease = 1 + std::ceil(level / xmatrix_cell_power_max * (twinkle - 1));
-          level -= util::rand() % std::min(level - 1, decrease);
-        } else if (level == 2)
-          level = util::rand() % 4 ? 2 : 1;
-        else
-          level = util::rand() % 6 ? 1 : 0;
+        // level = 色番号
+        double const fractional_level = util::interpolate(current_power, 0.6, std::size(color_table));
+        int level = fractional_level;
+        if (twinkle != 0.0 && util::randf() > fractional_level - level) level++;
+        level = std::min<int>(level, std::size(color_table) - 1);
 
         tcell.fg = color_table[level];
-        tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 5;
+        tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 0.5;
 
         tcell.diffuse += level / 3;
         add_diffuse(x - 1, y, level / 3 - 1);
@@ -458,7 +459,7 @@ public:
         thread.age = 0;
         thread.speed = speed_table[util::rand() % std::size(speed_table)];
         thread.power = 2.0 / thread.speed;
-        thread.decay = xmatrix_decay_rate;
+        thread.decay = xmatrix_default_decay;
 
         int const layer = thread.speed < 3 ? 0 : thread.speed < 5 ? 1 : 2;
         layers[layer].add_thread(thread);
@@ -494,9 +495,9 @@ private:
           tcell.c = ' ';
         } else {
           cell.c = U'0' + util::rand() % 10;
-          cell.birth = now - xmatrix_decay_rate * std::size(color_table) / 2 + util::rand_char() % xmatrix_decay_rate;
+          cell.birth = now - std::round((0.5 - 0.1 * util::randf()) * xmatrix_default_decay);
           cell.power = 1.0;
-          cell.decay = xmatrix_decay_rate;
+          cell.decay = xmatrix_default_decay;
           cell.flags = 0;
           tcell.c = cell.c;
           tcell.fg = color_table[std::size(color_table) / 2 + util::rand_char() % 3];
@@ -632,7 +633,7 @@ private:
       cell.c = uchar;
       cell.birth = now;
       cell.power = 1.0;
-      cell.decay = 2;
+      cell.decay = 20;
       cell.flags = 0;
     } else if (type == 2) {
       s2banner_put_char(x0, y0, x, y, uchar, 1);
@@ -644,7 +645,7 @@ private:
       thread.speed = s2banner_cell_height - y;
       if (thread.speed > 2) thread.speed += util::rand() % 3 - 1;
       thread.power = 2.0 / 3.0;
-      thread.decay = 3;
+      thread.decay = 30;
       layers[1].add_thread(thread);
     }
   }
@@ -663,7 +664,7 @@ private:
       thread.age = 0;
       thread.speed = 8;
       thread.power = 0.5;
-      thread.decay = xmatrix_decay_rate;
+      thread.decay = xmatrix_default_decay;
       layers[1].add_thread(thread);
     }
   }
@@ -798,14 +799,14 @@ private:
           cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power;
-          cell.decay = 10;
+          cell.decay = 100;
           cell.flags = cflag_disable_bold;
           break;
         case 2:
           cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power * 0.2;
-          cell.decay = 10;
+          cell.decay = 100;
           cell.flags = cflag_disable_bold;
           break;
         default:
@@ -847,7 +848,7 @@ private:
           cell.c = util::rand_char();
           cell.birth = now;
           cell.power = power * power_scale;
-          cell.decay = 10;
+          cell.decay = 100;
           cell.flags = cflag_disable_bold;
         }
       }
@@ -856,7 +857,7 @@ private:
 
 public:
   void s5mandel() {
-    twinkle = 2;
+    twinkle = 0.1;
 
     double const scale0 = 1e-17, scaleN = 30.0 / std::min(cols, rows);
     std::uint32_t const nloop = 3000;
@@ -883,13 +884,13 @@ public:
 
 buffer buff;
 
-void trap_sigint(int sig) {
+void trapint(int sig) {
   buff.finalize();
   std::signal(sig, SIG_DFL);
   std::raise(sig);
   std::exit(128 + sig);
 }
-void trap_sigwinch(int) {
+void trapwinch(int) {
   buff.initialize();
   buff.redraw();
 }
@@ -908,8 +909,8 @@ void trapcont(int) {
 using namespace cxxmatrix;
 
 int main(int argc, char** argv) {
-  std::signal(SIGINT, trap_sigint);
-  std::signal(SIGWINCH, trap_sigwinch);
+  std::signal(SIGINT, trapint);
+  std::signal(SIGWINCH, trapwinch);
   std::signal(SIGTSTP, traptstp);
   std::signal(SIGCONT, trapcont);
 

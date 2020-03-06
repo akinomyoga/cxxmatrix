@@ -44,6 +44,10 @@ inline int mod(int value, int modulo) {
   return value;
 }
 
+inline constexpr double interpolate(double value, double a, double b) {
+  return a + (b - a) * value;
+}
+
 }
 
 #endif
