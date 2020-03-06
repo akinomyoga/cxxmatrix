@@ -326,12 +326,16 @@ private:
   byte color_table[11] = {16, 22, 28, 35, 41, 47, 84, 121, 157, 194, 231, };
   //byte color_table[11] = {16, 22, 29, 35, 42, 48, 85, 121, 158, 194, 231, };
 
-  cell_t const* rend_cell(int x, int y) {
+  cell_t const* rend_cell(int x, int y, double& power) {
+    cell_t const* ret = nullptr;
     for (auto& layer: layers) {
       auto const& cell = layer.rcell(x, y);
-      if (cell.c != ' ') return &cell;
+      if (cell.c != ' ') {
+        if (!ret) ret = &cell;
+        if (cell.current_power > power) power = cell.current_power;
+      }
     }
-    return nullptr;
+    return ret;
   }
 
   void construct_render_content() {
@@ -341,7 +345,8 @@ private:
         std::size_t const index = y * cols + x;
         tcell_t& tcell = new_content[index];
 
-        cell_t const* lcell = this->rend_cell(x, y);
+        double current_power = 0.0;
+        cell_t const* lcell = this->rend_cell(x, y, current_power);
         if (!lcell) {
           tcell.c = ' ';
           continue;
@@ -350,7 +355,6 @@ private:
         tcell.c = lcell->c;
 
         // current_power = 現在の輝度 (瞬き)
-        double current_power = lcell->current_power;
         if (twinkle != 0.0) {
           current_power -= std::hypot(current_power * twinkle, 0.1) * util::randf();
           if (current_power < 0.0) current_power = 0.0;
