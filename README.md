@@ -1,6 +1,9 @@
 # C++ Matrix in terminal
 
 I wrote a simple terminal program of Matrix digital rain.
+A part of the purpose of this program is to test the performance of the terminal emulators.
+Another purpose is just for fun.
+Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 **Features**
 
@@ -40,6 +43,11 @@ $ ./cxxmatrix 'The Matrix' 'Reloaded'
 
 # Similar programs
 
+Related tags in GitHub
+
+- [`#matrix-rain`](https://github.com/topics/matrix-rain)
+- [`#matrix-digital-rain`](https://github.com/topics/matrix-digital-rain)
+
 ## The Matrix rains in terminals
 
 - [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C (1124)
@@ -53,6 +61,8 @@ $ ./cxxmatrix 'The Matrix' 'Reloaded'
 - [b166erobot/matrix](https://github.com/b166erobot/matrix) in Python3 (16)
 - [amstrad/oh-my-matrix](https://github.com/amstrad/oh-my-matrix) - [Demo](https://github.com/amstrad/oh-my-matrix/blob/master/oh-my-matrix.gif) in Python (13)
 - [txstc55/matrix_viewer](https://github.com/txstc55/matrix_viewer) - [Demo](https://github.com/txstc55/matrix_viewer#matrix-viewer) in C++ (11)
+- [JaydenL33/cmatrix2.0](https://github.com/JaydenL33/cmatrix2.0) in C (3)
+- [gurushida/matrixmirror](https://github.com/gurushida/matrixmirror) - [Demo](https://github.com/gurushida/matrixmirror#matrixmirror) in Objective-C (0)
 
 ## The Matrix rains in browsers
 
@@ -64,9 +74,16 @@ $ ./cxxmatrix 'The Matrix' 'Reloaded'
 - [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (14)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas (13)
 - [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (10)
+- [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas (3)
+- [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas (1)
+- [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas (0)
+- [azder/ES2017-Matrix-Rain](https://github.com/azder/ES2017-Matrix-Rain) - [Demo](https://azder.github.io/ES2017-Matrix-Rain/) in HTML5 Canvas (0)
+- [codingotaku/7-Segment-Digital-Matrix-Rain](https://github.com/codingotaku/7-Segment-Digital-Matrix-Rain) - [Demo](https://codingotaku.com/7-Segment-Digital-Matrix-Rain/) in HTML5 Canvas (0)
 
 ## Others
 
 - [tremby/Kaleidoscope-LEDEffect-DigitalRain](https://github.com/tremby/Kaleidoscope-LEDEffect-DigitalRain) in Kaleidoscope? (20)
 - [nathanchere/MatrixSaver](https://github.com/nathanchere/MatrixSaver) in C# (18)
 - [sapandang/Matrix-Rain-Live-Wallpaper](https://github.com/sapandang/Matrix-Rain-Live-Wallpaper) in Android Wallpaper (13)
+- [artgl42/MatrixDigitalRain](https://github.com/artgl42/MatrixDigitalRain) - [Demo](https://github.com/artgl42/MatrixDigitalRain#matrixdigitalrain-dll) in C# (0)
+- [Sullivan008/CSharp-MatrixRain]](https://github.com/Sullivan008/CSharp-MatrixRain) in C# (0)

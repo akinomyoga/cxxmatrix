@@ -12,7 +12,8 @@ function output_glyph(_, tail, offset, len, i, j, x, y, l, bit_j) {
 
     c = substr(tail, 1, RLENGTH);
     if (c ~ /^U\+.*$/) {
-      c = "\\U" sprintf("%08x", strtonum("0x" substr(c, 3)));
+      c = "00000000" substr(c, 3);
+      c = "\\U" substr(c, length(c) - 7);
     } else if (c ~ /^[\\\']/) {
       c = "\\" substr(c, 1, 1);
     } else {
