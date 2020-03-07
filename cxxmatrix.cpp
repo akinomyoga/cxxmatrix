@@ -536,10 +536,10 @@ private:
           tcell.c = ' ';
         } else {
           cell.c = U'0' + util::rand() % 10;
-          cell.birth = now - std::round((0.5 - 0.1 * util::randf()) * xmatrix_default_decay);
+          cell.birth = now - std::round((0.5 + 0.1 * util::randf()) * xmatrix_default_decay);
           cell.power = 1.0;
           cell.decay = xmatrix_default_decay;
-          cell.flags = 0;
+          cell.flags = cflag_disable_bold;
           tcell.c = cell.c;
           tcell.fg = color_table[std::size(color_table) / 2 + util::rand_char() % 3];
         }
