@@ -11,11 +11,14 @@ utf8_locale := $(shell locale -a | grep -Ei 'utf-?8' | head -1)
 ifneq ($(utf8_locale),"")
   export LC_ALL=$(utf8_locale)
 else
-  $(warning Makefile: It seems your system does not support UTF-8)
+  $(warning It seems your system does not support UTF-8)
 endif
 
 # Auto detect gawk
 AWK := $(shell which gawk 2>/dev/null || echo awk)
+ifeq ($(AWK),"awk")
+  $(warning gawk (GNU awk) is not available, which may cause problems. Consider installing GNU awk.)
+endif
 
 # C++ compile options
 CPPFLAGS = -MD -MP -MF $(@:.o=.dep)

@@ -9,7 +9,7 @@ Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 - Hankaku kana characters as in the original film
 - Ten levels of "green"s using terminal 256 color support
-- Twinkling effects by adding random brightness
+- Twinkling effects by adding random brightness fluctuations
 - Diffused reflection effects by cell background colors
 
 **Scenes**
@@ -32,7 +32,11 @@ Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 This program is provided under the [MIT License](LICENSE.md).
 
-**Requirements**: git, C++17 compiler, GNU make, a terminal with 256color support
+**Requirements**:
+
+- git, C++17 compiler, GNU make, GNU awk
+- UTF-8 support of the system
+- a fast terminal with 256color and UTF-8 support
 
 ```console
 $ git clone https://github.com/akinomyoga/cxxmatrix.git
@@ -56,7 +60,7 @@ Related tags in GitHub
 - [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C (1124)
 - [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1010)
 - [M4444/TMatrix](https://github.com/M4444/TMatrix) - [Demo](https://github.com/M4444/TMatrix#how-it-looks) in C++ (202)
-- [GeertJohan/gomatrix](https://github.com/GeertJohan/gomatrix) in Go (188)
+- [GeertJohan/gomatrix](https://github.com/GeertJohan/gomatrix) - [Youtube](https://www.youtube.com/watch?v=mUXFxSmZMis) in Go (188)
 - [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node (58)
 - [torch2424/wasm-matrix](https://github.com/torch2424/wasm-matrix) - [Demo](https://github.com/torch2424/wasm-matrix#wasm-matrix) in WASM (47)
 - [levithomason/cmatrix](https://github.com/levithomason/cmatrix) - [Demo](https://github.com/levithomason/cmatrix#cmatrix) in C (44)
@@ -70,6 +74,7 @@ Related tags in GitHub
 ## The Matrix rains in browsers
 
 - [tidwall/digitalrain](https://github.com/tidwall/digitalrain) - [Demo](https://tidwall.com/digitalrain/) in HTML5 Canvas (314)
+- [winterbe/github-matrix](https://github.com/winterbe/github-matrix) - [Demo](https://winterbe.com/projects/github-matrix/) in HTML5 Canvas (171)
 - [emilyxxie/green_rain](https://github.com/emilyxxie/green_rain#matrix-digital-rain) - [Demo](http://xie-emily.com/generative_art/green_rain.html) in HTML5 Canvas (165)
 - [neilcarpenter/Matrix-code-rain](https://github.com/neilcarpenter/Matrix-code-rain) - [Demo](http://neilcarpenter.com/demos/canvas/matrix/) in HTML5 Canvas (74)
 - [Rezmason/matrix](https://github.com/Rezmason/matrix) - [Demo](https://rezmason.github.io/matrix/) in HTML5 Canvas (42)
@@ -77,6 +82,7 @@ Related tags in GitHub
 - [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (14)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas (13)
 - [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (10)
+- [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) (6)
 - [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas (3)
 - [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas (1)
 - [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas (0)
@@ -85,6 +91,7 @@ Related tags in GitHub
 
 ## Others
 
+- [winterbe/github-matrix-screensaver](https://github.com/winterbe/github-matrix-screensaver) (github-matrix/WebSaver?) in JavaScript (391)
 - [tremby/Kaleidoscope-LEDEffect-DigitalRain](https://github.com/tremby/Kaleidoscope-LEDEffect-DigitalRain) in Kaleidoscope? (20)
 - [nathanchere/MatrixSaver](https://github.com/nathanchere/MatrixSaver) in C# (18)
 - [sapandang/Matrix-Rain-Live-Wallpaper](https://github.com/sapandang/Matrix-Rain-Live-Wallpaper) in Android Wallpaper (13)
