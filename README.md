@@ -30,7 +30,7 @@ I wrote a simple terminal program of Matrix digital rain.
 **Requirements**: git, C++17 compiler, GNU make, a terminal with 256color support
 
 ```console
-$ git clone git@github.com:akinomyoga/cxxmatrix.git
+$ git clone https://github.com/akinomyoga/cxxmatrix.git
 $ cd cxxmatrix
 $ make
 $ ./cxxmatrix 'The Matrix' 'Reloaded'
