@@ -14,6 +14,7 @@
 #include <vector>
 #include <algorithm>
 #include <iterator>
+#include <unordered_map>
 
 #include "cxxmatrix.hpp"
 #include "mandel.hpp"
