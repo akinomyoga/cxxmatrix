@@ -24,7 +24,6 @@ namespace cxxmatrix {
 
 constexpr int xmatrix_frame_interval = 20;
 constexpr int xmatrix_default_decay = 100; // 既定の寿命
-constexpr int xmatrix_cell_power_max = 10;
 
 void xmatrix_msleep(int msec) {
   struct timespec tv;
