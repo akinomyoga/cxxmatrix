@@ -1,9 +1,10 @@
+#!/usr/bin/gawk -f
 
 BEGIN {
   mode = 1;
 }
 
-function output_glyph(_, tail, offset, len, i, j, x, y, l) {
+function output_glyph(_, tail, offset, len, i, j, x, y, l, bit_j) {
   tail = head;
   offset = 0;
   while (match(tail, /^[^[:space:]]+/) > 0) {
@@ -23,10 +24,12 @@ function output_glyph(_, tail, offset, len, i, j, x, y, l) {
       x = substr(data[i], offset + 1, len);
       l = length(x);
       y = 0;
+      bit_j = 1;
       for (j = 0; j < l; j++) {
         if (substr(x, j + 1, 1) ~ /[^[:space:]]/) {
-          y = or(y, lshift(1, j))
+          y += bit_j;
         }
+        bit_j *= 2;
       }
       printf("%d, ", y);
     }

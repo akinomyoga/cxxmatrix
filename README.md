@@ -5,7 +5,7 @@ I wrote a simple terminal program of Matrix digital rain.
 **Features**
 
 - Hankaku kana characters as in the original film
-- Use 10 levels of "green"s using terminal 256 color support
+- Ten levels of "green"s using terminal 256 color support
 - Twinkling effects by adding random brightness
 - Diffused reflection effects by cell background colors
 
@@ -27,7 +27,7 @@ I wrote a simple terminal program of Matrix digital rain.
 
 ## Usage
 
-Requirements: git, C++17 compiler, GNU make, a terminal with 256color support
+**Requirements**: git, C++17 compiler, GNU make, a terminal with 256color support
 
 ```console
 $ git clone git@github.com:akinomyoga/cxxmatrix.git
