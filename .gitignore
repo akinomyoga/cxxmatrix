@@ -4,4 +4,5 @@
 *.o
 *.dep
 /glyph.inl
+/glyph.inl.part
 /cxxmatrix

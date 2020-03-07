@@ -37,7 +37,8 @@ cxxmatrix.o: cxxmatrix.cpp glyph.inl
 	$(CXX) $(CXXFLAGS) $(CPPFLAGS) -c -o $@ $<
 
 glyph.inl: glyph.awk glyph.def
-	$(AWK) -f glyph.awk glyph.def > glyph.inl
+	$(AWK) -f glyph.awk glyph.def > glyph.inl.part
+	mv glyph.inl.part $@
 
 clean:
 	-rm -rf *.o glyph.inl
