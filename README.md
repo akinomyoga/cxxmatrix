@@ -7,7 +7,7 @@
 
 ## Demo
 
-- cxxmatrix in 80x28 - [Youtube](@@@@@)
+- cxxmatrix in 80x28 - [Youtube](https://www.youtube.com/watch?v=DeKuT8txldc)
 - Mandelbrot set in 479x186 - [YouTube](https://www.youtube.com/watch?v=RtMy4ltebKw)
 
 ![Captures](https://raw.githubusercontent.com/wiki/akinomyoga/cxxmatrix/images/cxxmatrix-version01sA.gif)
@@ -20,7 +20,7 @@ Requirements: git, C++17 compiler, GNU make, a terminal with 256color support
 $ git clone git@github.com:akinomyoga/cxxmatrix.git
 $ cd cxxmatrix
 $ make
-$ ./cxxmatrix 'Hello, world!'
+$ ./cxxmatrix 'The Matrix' 'Reloaded'
 ```
 
 # Similar programs
@@ -28,7 +28,7 @@ $ ./cxxmatrix 'Hello, world!'
 ## The Matrix rains in terminals
 
 - [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C (1124)
-[will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1010)
+- [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1010)
 - [M4444/TMatrix](https://github.com/M4444/TMatrix) - [Demo](https://github.com/M4444/TMatrix#how-it-looks) in C++ (202)
 - [GeertJohan/gomatrix](https://github.com/GeertJohan/gomatrix) in Go (188)
 - [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node (58)
