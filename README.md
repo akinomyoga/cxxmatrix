@@ -1,14 +1,27 @@
 # C++ Matrix in terminal
 
+I wrote a simple terminal program of Matrix digital rain.
+
+**Features**
+
+- Hankaku kana characters as in the original film
+- Use 10 levels of "green"s using terminal 256 color support
+- Twinkling effects by adding random brightness
+- Diffused reflection effects by cell background colors
+
+**Scenes**
+
 - Number falls
-- "The Matrix" rains
-- Conway's Game of Life
-- Mandelbrot set
+- Banner - Show command line arguments by shining characters
+- "The Matrix" rain - [Wikipedia](https://en.wikipedia.org/wiki/Matrix_digital_rain)
+- Conway's Game of Life - [Wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
+- Mandelbrot set - [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set)
 
 ## Demo
 
 - cxxmatrix in 80x28 - [Youtube](https://www.youtube.com/watch?v=DeKuT8txldc)
 - Mandelbrot set in 479x186 - [YouTube](https://www.youtube.com/watch?v=RtMy4ltebKw)
+- Highlight scenes - See the animated GIF below
 
 ![Captures](https://raw.githubusercontent.com/wiki/akinomyoga/cxxmatrix/images/cxxmatrix-version01sA.gif)
 
@@ -50,7 +63,7 @@ $ ./cxxmatrix 'The Matrix' 'Reloaded'
 - [syropian/HTML5-Matrix-Code-Rain](https://github.com/syropian/HTML5-Matrix-Code-Rain) - [Demo](https://codepen.io/syropian/pen/bLzAi) in HTML5 Canvas (29)
 - [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (14)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas (13)
-- [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (10) これは結構面白い
+- [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (10)
 
 ## Others
 
