@@ -23,6 +23,8 @@ $ make
 $ ./cxxmatrix 'The Matrix' 'Reloaded'
 ```
 
+**Quit**: <kbd>C-c</kbd>, **Suspend**: <kbd>C-z</kbd>
+
 # Similar programs
 
 ## The Matrix rains in terminals

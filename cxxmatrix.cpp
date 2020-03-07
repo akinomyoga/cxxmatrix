@@ -471,8 +471,8 @@ public:
   }
 
 
-private:
-  double s3rain_scroll_func(double value) {
+public:
+  static double s3rain_scroll_func_tanh(double value) {
     value = value / 200.0 - 10.0;
     constexpr double tanh_range = 2.0;
     static double th1 = std::tanh(tanh_range);
@@ -486,12 +486,15 @@ private:
       return th1 + (1.0 - th1 * th1) * (value - tanh_range);
     }
   }
+  static double s3rain_scroll_func_const(double) {
+    return 0.0;
+  }
 
 public:
-  void s3rain() {
+  void s3rain(std::uint32_t nloop, double (*scroll_func)(double)) {
     static byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
-    double const scr0 = s3rain_scroll_func(0);
-    for (std::uint32_t loop = 0; loop < 2800; loop++) {
+    double const scr0 = scroll_func(0);
+    for (std::uint32_t loop = 0; nloop == 0 || loop < nloop; loop++) {
       // add new threads
       if (now % (1 + 150 / cols) == 0) {
         thread_t thread;
@@ -506,7 +509,7 @@ public:
         layers[layer].add_thread(thread);
       }
 
-      double const scr = s3rain_scroll_func(loop) - scr0;
+      double const scr = scroll_func(loop) - scr0;
       layers[0].scrollx = -std::round(500 * scr);
       layers[1].scrollx = -std::round(50 * scr);
       layers[2].scrollx = +std::round(200 * scr);
@@ -961,9 +964,12 @@ int main(int argc, char** argv) {
   buff.s1number();
   for (int i = 1; i < argc; i++)
     buff.s2banner(argv[i]);
-  buff.s3rain();
+  buff.s3rain(2800, buffer::s3rain_scroll_func_tanh);
   buff.s4conway();
   buff.s5mandel();
+
+  // Infinite rain
+  buff.s3rain(0, buffer::s3rain_scroll_func_const);
 
   buff.finalize();
   return 0;
