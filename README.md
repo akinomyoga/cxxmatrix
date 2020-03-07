@@ -30,6 +30,8 @@ Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 ## Usage
 
+This program is provided under the [MIT License](LICENSE.md).
+
 **Requirements**: git, C++17 compiler, GNU make, a terminal with 256color support
 
 ```console
@@ -40,6 +42,7 @@ $ ./cxxmatrix 'The Matrix' 'Reloaded'
 ```
 
 **Quit**: <kbd>C-c</kbd>, **Suspend**: <kbd>C-z</kbd>
+
 
 # Similar programs
 
