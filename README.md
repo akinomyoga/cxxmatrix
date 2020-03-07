@@ -86,4 +86,4 @@ Related tags in GitHub
 - [nathanchere/MatrixSaver](https://github.com/nathanchere/MatrixSaver) in C# (18)
 - [sapandang/Matrix-Rain-Live-Wallpaper](https://github.com/sapandang/Matrix-Rain-Live-Wallpaper) in Android Wallpaper (13)
 - [artgl42/MatrixDigitalRain](https://github.com/artgl42/MatrixDigitalRain) - [Demo](https://github.com/artgl42/MatrixDigitalRain#matrixdigitalrain-dll) in C# (0)
-- [Sullivan008/CSharp-MatrixRain]](https://github.com/Sullivan008/CSharp-MatrixRain) in C# (0)
+- [Sullivan008/CSharp-MatrixRain](https://github.com/Sullivan008/CSharp-MatrixRain) in C# (0)
