@@ -14,16 +14,20 @@ Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 **Scenes**
 
-- Number falls
-- Banner - Show command line arguments by shining characters
-- "The Matrix" rain - [Wikipedia](https://en.wikipedia.org/wiki/Matrix_digital_rain)
-- Conway's Game of Life - [Wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
-- Mandelbrot set - [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set)
+The following scenes will be shown in turn.
+If you want to see the Mandelbrot set, you need to hold on for a few minutes.
+
+1. Number falls
+2. Banner - Show command line arguments by shining characters
+3. "The Matrix" rain - [Wikipedia](https://en.wikipedia.org/wiki/Matrix_digital_rain)
+4. Conway's Game of Life - [Wikipedia](https://en.wikipedia.org/wiki/Conway%27s_Game_of_Life)
+5. The Mandelbrot set - [Wikipedia](https://en.wikipedia.org/wiki/Mandelbrot_set)
+6. (End scene) "The Matrix" rain
 
 ## Demo
 
 - cxxmatrix in 80x28 - [Youtube](https://www.youtube.com/watch?v=DeKuT8txldc)
-- Mandelbrot set in 479x186 - [YouTube](https://www.youtube.com/watch?v=RtMy4ltebKw)
+- The Mandelbrot set in 479x186 - [YouTube](https://www.youtube.com/watch?v=RtMy4ltebKw)
 - Highlight scenes - See the animated GIF below
 
 ![Captures](https://raw.githubusercontent.com/wiki/akinomyoga/cxxmatrix/images/cxxmatrix-version01sA.gif)
@@ -82,7 +86,7 @@ Related tags in GitHub
 - [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (14)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas (13)
 - [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (10)
-- [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) (6)
+- [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) in HTML5 Canvas (6)
 - [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas (3)
 - [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas (1)
 - [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas (0)

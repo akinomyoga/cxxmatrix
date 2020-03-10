@@ -9,28 +9,39 @@
 
 #include <unistd.h>
 #include <sys/ioctl.h>
-#include <time.h>
 
 #include <vector>
 #include <algorithm>
 #include <iterator>
 #include <unordered_map>
+#include <chrono>
+#include <thread>
 
 #include "cxxmatrix.hpp"
 #include "mandel.hpp"
 #include "conway.hpp"
 
+namespace cxxmatrix::config {
+  constexpr std::chrono::milliseconds frame_interval {40};
+  constexpr int default_decay = 100; // 既定の寿命
+}
+
 namespace cxxmatrix {
 
-constexpr int xmatrix_frame_interval = 20;
-constexpr int xmatrix_default_decay = 100; // 既定の寿命
-
-void xmatrix_msleep(int msec) {
-  struct timespec tv;
-  tv.tv_sec = 0;
-  tv.tv_nsec = msec * 1000000;
-  nanosleep(&tv, NULL);
-}
+struct frame_scheduler {
+  using clock_type = std::chrono::high_resolution_clock;
+  clock_type::time_point prev;
+  frame_scheduler() {
+    prev = clock_type::now();
+  }
+  void next_frame() {
+    clock_type::time_point until = prev + config::frame_interval;
+    clock_type::time_point now = clock_type::now();
+    if (until > now)
+      std::this_thread::sleep_for(until - now);
+    prev = now;
+  }
+};
 
 struct tcell_t {
   char32_t c = U' ';
@@ -49,7 +60,7 @@ struct cell_t {
   char32_t c = U' ';
   int birth = 0; // 設置時刻
   double power = 0; // 初期の明るさ
-  double decay = xmatrix_default_decay; // 寿命
+  double decay = config::default_decay; // 寿命
   std::uint32_t flags = 0;
 
   double stage = 0; // 現在の消滅段階 (0..1.0)
@@ -151,6 +162,8 @@ struct buffer {
   std::FILE* file;
 
   layer_t layers[3];
+
+  frame_scheduler scheduler;
 
 private:
   void put_utf8(char32_t uc) {
@@ -503,7 +516,7 @@ public:
         thread.age = 0;
         thread.speed = speed_table[util::rand() % std::size(speed_table)];
         thread.power = 2.0 / thread.speed;
-        thread.decay = xmatrix_default_decay;
+        thread.decay = config::default_decay;
 
         int const layer = thread.speed < 3 ? 0 : thread.speed < 5 ? 1 : 2;
         layers[layer].add_thread(thread);
@@ -519,12 +532,12 @@ public:
       layers[2].scrolly = +std::round(45 * scr);
 
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
-    std::uint32_t const wait = 8 * rows + 100;
+    std::uint32_t const wait = 8 * rows + config::default_decay;
     for (std::uint32_t loop = 0; loop < wait; loop++) {
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
   }
 
@@ -539,9 +552,9 @@ private:
           tcell.c = ' ';
         } else {
           cell.c = U'0' + util::rand() % 10;
-          cell.birth = now - std::round((0.5 + 0.1 * util::randf()) * xmatrix_default_decay);
+          cell.birth = now - std::round((0.5 + 0.1 * util::randf()) * config::default_decay);
           cell.power = 1.0;
-          cell.decay = xmatrix_default_decay;
+          cell.decay = config::default_decay;
           cell.flags = cflag_disable_bold;
           tcell.c = cell.c;
           tcell.fg = color_table[std::size(color_table) / 2 + util::rand_char() % 3];
@@ -826,7 +839,7 @@ public:
 
       s2banner_add_thread();
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
   }
 
@@ -873,7 +886,7 @@ public:
       s4conway_board.step(time);
       s4conway_frame(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
   }
 
@@ -915,11 +928,11 @@ public:
       theta -= 0.01;
       s5mandel_frame(theta, scale, std::min(0.01 * loop, 1.0));
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
     for (loop = 0; loop < 100; loop++) {
       render_layers();
-      xmatrix_msleep(xmatrix_frame_interval);
+      scheduler.next_frame();
     }
 
     twinkle = default_twinkle;

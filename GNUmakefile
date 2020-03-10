@@ -22,7 +22,7 @@ endif
 
 # C++ compile options
 CPPFLAGS = -MD -MP -MF $(@:.o=.dep)
-CXXFLAGS := -std=c++17 -Wall -Wextra -Os
+CXXFLAGS := -std=c++17 -Wall -Wextra -Ofast
 
 #------------------------------------------------------------------------------
 # cxx matrix
