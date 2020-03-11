@@ -7,11 +7,13 @@ all:
 # Settings
 
 # Set UTF-8 locale
-utf8_locale := $(shell locale -a | grep -Ei 'utf-?8' | head -1)
-ifneq ($(utf8_locale),"")
-  export LC_ALL=$(utf8_locale)
-else
-  $(warning It seems your system does not support UTF-8)
+ifeq ($(shell locale | grep -Ei 'LC_CTYPE.*utf-?8'),"")
+  utf8_locale := $(shell locale -a | grep -Ei 'utf-?8' | head -1)
+  ifneq ($(utf8_locale),"")
+    export LC_ALL=$(utf8_locale)
+  else
+    $(warning It seems your system does not support UTF-8)
+  endif
 endif
 
 # Auto detect gawk
