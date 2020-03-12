@@ -1033,7 +1033,192 @@ void trapcont(int) {
 
 using namespace cxxmatrix;
 
+struct arguments {
+  bool flag_error = false;
+  bool flag_help = false;
+
+public:
+  void print_help(std::FILE* file) {
+    std::fprintf(file,
+      "cxxmatrix (C++ Matrix)\n"
+      "usage: cxxmatrix [OPTIONS...] [[--] MESSAGE...]\n"
+      "\n"
+      "OPTIONS\n"
+      "   --help      Show help\n"
+      "   --          The rest arguments are processed as MESSAGE\n"
+      "   -m, --message=MESSAGE\n"
+      "               Add a message\n"
+      "   -s, --scene=SCENE\n"
+      "               Add a scene. One of 'number', 'banner', 'rain', 'conway',\n"
+      "               'mandelbrot', 'rain_forever' and 'loop'.\n"
+      "\n"
+      "MESSAGE\n"
+      "   Add a message\n"
+      "\n"
+    );
+  }
+private:
+  int argc;
+  char** argv;
+  int iarg;
+  char const* arg;
+  char const* get_optarg(char c) {
+    if (*arg) {
+      char const* ret = arg;
+      arg = "";
+      return ret;
+    } else if (iarg < argc) {
+      return argv[iarg++];
+    } else {
+      std::fprintf(stderr, "cxxmatrix: missing option argument for '-%c'.", c);
+      flag_error = true;
+      return nullptr;
+    }
+  }
+
+  char const* longopt_arg;
+  bool is_longopt(const char* name) {
+    const char* p = arg;
+    while (*name && *name == *p) p++, name++;
+    if (*name) return false;
+    if (*p == '=') {
+      longopt_arg = p + 1;
+      return true;
+    } else if (*p == '\0') {
+      longopt_arg = nullptr;
+      return true;
+    } else {
+      return false;
+    }
+  }
+  char const* get_longoptarg() {
+    if (longopt_arg) {
+      return longopt_arg;
+    } else if (iarg < argc) {
+      return argv[iarg++];
+    } else {
+      std::fprintf(stderr, "cxxmatrix: missing option argument for \"--%s\"\n", arg);
+      flag_error = true;
+      return nullptr;
+    }
+  }
+
+public:
+  std::vector<std::string> messages;
+private:
+  void push_message(const char* message) {
+    messages.push_back(message);
+  }
+
+public:
+  enum scene_t {
+    scene_none         = 0,
+    scene_number       = 1,
+    scene_banner       = 2,
+    scene_rain         = 3,
+    scene_conway       = 4,
+    scene_mandelbrot   = 5,
+    scene_rain_forever = 6,
+    scene_loop = 99,
+  };
+  std::vector<scene_t> scenes;
+private:
+  void push_scene(const char* scene) {
+    if (std::strcmp(scene, "number") == 0) {
+      scenes.push_back(scene_number);
+    } else if (std::strcmp(scene, "banner") == 0) {
+      scenes.push_back(scene_banner);
+    } else if (std::strcmp(scene, "conway") == 0) {
+      scenes.push_back(scene_conway);
+    } else if (std::strcmp(scene, "rain") == 0) {
+      scenes.push_back(scene_rain);
+    } else if (std::strcmp(scene, "mandelbrot") == 0) {
+      scenes.push_back(scene_mandelbrot);
+    } else if (std::strcmp(scene, "loop") == 0) {
+      if (scenes.empty()) {
+        std::fprintf(stderr, "cxxmatrrix: nothing to loop (-s loop)\n");
+        flag_error = true;
+        return;
+      }
+      scenes.push_back(scene_loop);
+    } else if (std::strcmp(scene, "rain-forever") == 0) {
+      scenes.push_back(scene_rain_forever);
+    } else {
+      std::fprintf(stderr, "cxxxmatrix: unknown value for scene (%s)\n", scene);
+      flag_error = true;
+    }
+  }
+
+public:
+  bool process(int argc, char** argv) {
+    bool flag_literal = false;
+    this->argc = argc;
+    this->argv = argv;
+    this->iarg = 1;
+    while (iarg < argc) {
+      arg = argv[iarg++];
+      if (!flag_literal && arg[0] == '-') {
+        if (arg[1] == '-') {
+          arg += 2;
+          if (!*arg) {
+            flag_literal = true;
+          } else if (is_longopt("help")) {
+            flag_help = true;
+          } else if (is_longopt("message")) {
+            push_message(get_longoptarg());
+          } else if (is_longopt("scene")) {
+            push_scene(get_longoptarg());
+          } else {
+            std::fprintf(stderr, "cxxmatrix: unknown long option (--%s)\n", arg);
+            flag_error = true;
+          }
+        } else {
+          arg++;
+          while (char const c = *arg++) {
+            switch (c) {
+            case 'm':
+              if (char const* opt = get_optarg(c))
+                push_message(opt);
+              break;
+            case 's':
+              if (char const* opt = get_optarg(c))
+                push_scene(opt);
+              break;
+            default:
+              std::fprintf(stderr, "cxxmatrix: unknown option (-%c)\n", c);
+              flag_error = true;
+              break;
+            }
+          }
+        }
+        continue;
+      }
+      push_message(arg);
+    }
+    return !flag_error;
+  }
+  arguments(int argc, char** argv) {
+    this->process(argc, argv);
+  }
+};
+
 int main(int argc, char** argv) {
+  arguments args(argc, argv);
+  if (args.flag_error) return 2;
+  if (args.flag_help) {
+    args.print_help(stdout);
+    return 0;
+  }
+
+  if (args.scenes.empty()) {
+    args.scenes.push_back(arguments::scene_number);
+    args.scenes.push_back(arguments::scene_banner);
+    args.scenes.push_back(arguments::scene_rain);
+    args.scenes.push_back(arguments::scene_conway);
+    args.scenes.push_back(arguments::scene_mandelbrot);
+    args.scenes.push_back(arguments::scene_rain_forever);
+  }
+
   std::signal(SIGINT, trapint);
   std::signal(SIGWINCH, trapwinch);
   std::signal(SIGTSTP, traptstp);
@@ -1041,19 +1226,35 @@ int main(int argc, char** argv) {
 
   buff.initialize();
   buff.term_enter();
-
-  std::vector<std::string> messages;
-  for (int i = 1; i < argc; i++)
-    messages.push_back(argv[i]);
-
-  buff.s1number();
-  buff.s2banner(messages);
-  buff.s3rain(2800, buffer::s3rain_scroll_func_tanh);
-  buff.s4conway();
-  buff.s5mandel();
-
-  // Infinite rain
-  buff.s3rain(0, buffer::s3rain_scroll_func_const);
+  std::size_t index = 0;
+  while (index < args.scenes.size()) {
+    auto const scene = args.scenes[index++];
+    switch (scene) {
+    case arguments::scene_none:
+      break;
+    case arguments::scene_number:
+      buff.s1number();
+      break;
+    case arguments::scene_banner:
+      buff.s2banner(args.messages);
+      break;
+    case arguments::scene_rain:
+      buff.s3rain(2800, buffer::s3rain_scroll_func_tanh);
+      break;
+    case arguments::scene_conway:
+      buff.s4conway();
+      break;
+    case arguments::scene_mandelbrot:
+      buff.s5mandel();
+      break;
+    case arguments::scene_rain_forever:
+      buff.s3rain(0, buffer::s3rain_scroll_func_const);
+      break;
+    case arguments::scene_loop:
+      index = 0;
+      break;
+    }
+  }
 
   buff.finalize();
   return 0;

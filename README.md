@@ -1,7 +1,7 @@
 # C++ Matrix in terminal
 
 I wrote a simple terminal program of Matrix digital rain.
-A part of the purpose of this program is to test the performance of the terminal emulators.
+A part of the purpose of this program is to test the performance of terminal emulators.
 Another purpose is just for fun.
 Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
@@ -14,7 +14,7 @@ Enjoy it with fast terminals (e.g., urxvt, alacritty, terminology, etc.)!
 
 **Scenes**
 
-The following scenes will be shown in turn.
+The following scenes will be visited in turn.
 If you want to see the Mandelbrot set, you need to hold on for a few minutes.
 
 1. Number falls
