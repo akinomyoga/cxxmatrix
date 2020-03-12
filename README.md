@@ -49,8 +49,15 @@ $ make
 $ ./cxxmatrix 'The Matrix' 'Reloaded'
 ```
 
-**Quit**: <kbd>C-c</kbd>, **Suspend**: <kbd>C-z</kbd>
+**Quit**: <kbd>C-c</kbd>; **Suspend**: <kbd>C-z</kbd>; **Menu**: <kbd>RET</kbd>, <kbd>C-m</kbd>
 
+**Options**
+
+Please check the help with the option `--help`:
+
+```console
+$ ./cxxmatrix --help
+```
 
 # Similar programs
 

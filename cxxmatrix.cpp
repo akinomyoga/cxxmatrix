@@ -9,6 +9,8 @@
 
 #include <unistd.h>
 #include <sys/ioctl.h>
+#include <termios.h>
+#include <fcntl.h>
 
 #include <vector>
 #include <algorithm>
@@ -16,6 +18,7 @@
 #include <unordered_map>
 #include <chrono>
 #include <thread>
+#include <functional>
 
 #include "cxxmatrix.hpp"
 #include "mandel.hpp"
@@ -155,6 +158,123 @@ public:
   }
 };
 
+typedef std::uint32_t key_t;
+
+enum key_flags {
+  key_up    = 0x110000,
+  key_down  = 0x110001,
+  key_right = 0x110002,
+  key_left  = 0x110003,
+};
+inline constexpr key_t key_ctrl(key_t k) { return k & 0x1F; }
+
+struct key_reader {
+  bool term_internal = false;
+  struct termios term_termios_save;
+  bool term_nonblock_save = false;
+
+  std::function<void(key_t)> proc;
+
+private:
+  static bool term_set_nonblock(int fd, bool value) {
+    int flags = fcntl(fd, F_GETFL, 0);
+    if (flags < 0) {
+      perror("contra::term (fd_set_nonblock/fcntl(0, F_GETFL))");
+      exit(1);
+    }
+
+    bool const old_status = flags & O_NONBLOCK;
+    if (old_status == value) return old_status;
+
+    int const result = fcntl(fd, F_SETFL, flags ^ O_NONBLOCK);
+    if (result < 0) {
+      perror("contra::term (fd_set_nonblock/fcntl(0, F_SETFL))");
+      exit(1);
+    }
+    return old_status;
+  }
+
+public:
+  void leave() {
+    if (!term_internal) return;
+    term_internal = false;
+    term_set_nonblock(STDIN_FILENO, term_nonblock_save);
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &this->term_termios_save);
+  }
+  void enter() {
+    if (term_internal) return;
+    term_internal = true;
+
+    tcgetattr(STDIN_FILENO, &this->term_termios_save);
+    struct termios termios = this->term_termios_save;
+    termios.c_lflag &= ~(ECHO | ICANON | IEXTEN); // シグナルは使うので ISIG は消さない
+    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    termios.c_cflag &= ~(CSIZE | PARENB);
+    termios.c_cflag |= CS8;
+    termios.c_oflag &= ~(OPOST);
+    termios.c_cc[VMIN]  = 1;
+    termios.c_cc[VTIME] = 0;
+    tcsetattr(STDIN_FILENO, TCSAFLUSH, &termios);
+
+    term_nonblock_save = term_set_nonblock(STDIN_FILENO, true);
+  }
+
+private:
+  void process_key(key_t k) {
+    if (proc) proc(k);
+  }
+
+  bool esc = false;
+  void process_byte(byte b) {
+    if (b == 0x1b) {
+      esc = true;
+      return;
+    }
+    if (esc) {
+      if (0x40 <= b && b < 0x80) {
+        switch (b) {
+        case 'A': esc = false; process_key(key_up   ); break;
+        case 'B': esc = false; process_key(key_down ); break;
+        case 'C': esc = false; process_key(key_right); break;
+        case 'D': esc = false; process_key(key_left ); break;
+        case '[': break;
+        case 'O': break;
+        default: esc = false; break;
+        }
+      } else if (0x80 <= b) {
+        process_key(0x1b);
+        process_key(b);
+        esc = false;
+      }
+    } else {
+      process_key(b);
+    }
+  }
+public:
+  void process() {
+    byte buffer[1024];
+    ssize_t nread;
+    while ((nread = read(STDIN_FILENO, buffer, 1024)) > 0) {
+      for (ssize_t i = 0; i < nread; i++)
+        process_byte(buffer[i]);
+    }
+  }
+};
+
+
+enum scene_t {
+  scene_none         = 0,
+  scene_number       = 1,
+  scene_banner       = 2,
+  scene_rain         = 3,
+  scene_conway       = 4,
+  scene_mandelbrot   = 5,
+  scene_rain_forever = 6,
+  scene_loop = 99,
+
+  scene_count = 6,
+};
+
 struct buffer {
   int cols, rows;
   std::vector<tcell_t> old_content;
@@ -164,6 +284,7 @@ struct buffer {
   layer_t layers[3];
 
   frame_scheduler scheduler;
+  key_reader kreader;
 
 private:
   void put_utf8(char32_t uc) {
@@ -449,24 +570,41 @@ public:
     this->draw_content();
   }
 
-  bool term_altscreen = false;
+  bool term_internal = false;
   void term_leave() {
-    if (!term_altscreen) return;
-    term_altscreen = false;
+    if (!term_internal) return;
+    term_internal = false;
     std::fprintf(file, "\x1b[%dH\n", rows);
     std::fprintf(file, "\x1b[?1049l\x1b[?25h");
     std::fflush(file);
+    kreader.leave();
   }
   void term_enter() {
-    if (term_altscreen) return;
-    term_altscreen = true;
+    if (term_internal) return;
+    term_internal = true;
+    kreader.enter();
     std::fprintf(file, "\x1b[?1049h\x1b[?25l");
     sgr0();
     redraw();
     std::fflush(file);
   }
 
+  bool is_menu = false;
+  void process_key(key_t k) {
+    if (is_menu) {
+      menu_process_key(k);
+    } else {
+      switch (k) {
+      case key_ctrl('m'):
+      case key_ctrl('j'):
+        menu_initialize();
+        break;
+      }
+    }
+  }
+
   void initialize() {
+    kreader.proc = [this] (key_t k) { this->process_key(k); };
     struct winsize ws;
     ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
     cols = ws.ws_col;
@@ -533,11 +671,15 @@ public:
 
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
     std::uint32_t const wait = 8 * rows + config::default_decay;
     for (std::uint32_t loop = 0; loop < wait; loop++) {
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
   }
 
@@ -571,6 +713,8 @@ public:
         s1number_fill_numbers(stripe);
         render_direct();
         scheduler.next_frame();
+        kreader.process();
+        if (is_menu) return;
       }
     }
   }
@@ -743,10 +887,6 @@ private:
   };
 
   banner_t banner;
-  void s2banner_initialize(std::vector<std::string> const& messages) {
-    for (std::string const& msg: messages)
-      banner.add_message(msg);
-  }
 
   void s2banner_write_letter(int x0, int y0, glyph_t const& glyph, int type) {
     x0 += (glyph.render_width - 1 - glyph.w) / 2;
@@ -891,12 +1031,16 @@ private:
       s2banner_add_thread();
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
   }
 public:
-  void s2banner(std::vector<std::string> const& messages) {
-    s2banner_initialize(messages);
-
+public:
+  void s2banner_add_message(std::string const& message) {
+    banner.add_message(message);
+  }
+  void s2banner() {
     // mode = 0: glyph を使って表示
     // mode = 1: 単純に文字を並べる
     // mode = 2: 1文字ずつ空白を空けて文字を並べる
@@ -955,6 +1099,8 @@ public:
       s4conway_frame(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
   }
 
@@ -997,13 +1143,112 @@ public:
       s5mandel_frame(theta, scale, std::min(0.01 * loop, 1.0));
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
     for (loop = 0; loop < 100; loop++) {
       render_layers();
       scheduler.next_frame();
+      kreader.process();
+      if (is_menu) return;
     }
 
     twinkle = default_twinkle;
+  }
+
+private:
+  static constexpr int menu_index_min = scene_number;
+  static constexpr int menu_index_max = scene_rain_forever;
+  int menu_index = menu_index_min;
+
+  void menu_initialize() {
+    is_menu = true;
+    menu_index = menu_index_min;
+  }
+
+  void menu_process_key(key_t k) {
+    switch (k) {
+    case key_ctrl('p'):
+    case 'k':
+    case key_up:
+      if (menu_index > menu_index_min)
+        menu_index--;
+      break;
+    case key_ctrl('n'):
+    case 'j':
+    case key_down:
+      if (menu_index < menu_index_max)
+        menu_index++;
+      break;
+    case key_ctrl('m'):
+    case key_ctrl('j'):
+      is_menu = false;
+      break;
+    }
+  }
+  void menu_frame_draw_string(int y0, scene_t scene, const char* name) {
+    std::size_t const len = std::strlen(name);
+    int const progress = 2;
+    int const x0 = (cols - len * progress) / 2;
+    double const power = scene == menu_index ? 1.0 : 0.5;
+    double const flags = scene == menu_index ? 0 : cflag_disable_bold;
+    for (std::size_t i = 0; i < len; i++) {
+      cell_t& cell = layers[0].cell(x0 + i * progress, y0);
+      cell.c = name[i];
+      cell.birth = now;
+      cell.power = power;
+      cell.decay = 20;
+      cell.flags = flags;
+    }
+  }
+public:
+  int scene_menu() {
+    while (is_menu) {
+      int const line_height = std::min(3, rows / scene_count);
+      int const y0 = (rows - scene_count * line_height) / 2;
+      int i = 0;
+      menu_frame_draw_string(y0 + i++ * line_height, scene_number      , "Number falls");
+      menu_frame_draw_string(y0 + i++ * line_height, scene_banner      , "Banner");
+      menu_frame_draw_string(y0 + i++ * line_height, scene_rain        , "Matrix rain");
+      menu_frame_draw_string(y0 + i++ * line_height, scene_conway      , "Conway's Game of Life");
+      menu_frame_draw_string(y0 + i++ * line_height, scene_mandelbrot  , "Mandelbrot set");
+      menu_frame_draw_string(y0 + i++ * line_height, scene_rain_forever, "Rain forever");
+
+      render_layers();
+      scheduler.next_frame();
+      kreader.process();
+      if (!is_menu) break;
+    }
+
+    return menu_index;
+  }
+
+public:
+  void scene(scene_t s) {
+    switch (s) {
+    case scene_none:
+      break;
+    case scene_number:
+      this->s1number();
+      break;
+    case scene_banner:
+      this->s2banner();
+      break;
+    case scene_rain:
+      this->s3rain(2800, buffer::s3rain_scroll_func_tanh);
+      break;
+    case scene_conway:
+      this->s4conway();
+      break;
+    case scene_mandelbrot:
+      this->s5mandel();
+      break;
+    case scene_rain_forever:
+      this->s3rain(0, buffer::s3rain_scroll_func_const);
+      break;
+    case scene_loop:
+      break;
+    }
   }
 };
 
@@ -1054,6 +1299,11 @@ public:
       "\n"
       "MESSAGE\n"
       "   Add a message\n"
+      "\n"
+      "Keyboard\n"
+      "   C-c (SIGINT)  Quit\n"
+      "   C-z (SIGTSTP) Suspend\n"
+      "   C-m, RET      Show menu\n"
       "\n"
     );
   }
@@ -1111,16 +1361,6 @@ private:
   }
 
 public:
-  enum scene_t {
-    scene_none         = 0,
-    scene_number       = 1,
-    scene_banner       = 2,
-    scene_rain         = 3,
-    scene_conway       = 4,
-    scene_mandelbrot   = 5,
-    scene_rain_forever = 6,
-    scene_loop = 99,
-  };
   std::vector<scene_t> scenes;
 private:
   void push_scene(const char* scene) {
@@ -1211,13 +1451,15 @@ int main(int argc, char** argv) {
   }
 
   if (args.scenes.empty()) {
-    args.scenes.push_back(arguments::scene_number);
-    args.scenes.push_back(arguments::scene_banner);
-    args.scenes.push_back(arguments::scene_rain);
-    args.scenes.push_back(arguments::scene_conway);
-    args.scenes.push_back(arguments::scene_mandelbrot);
-    args.scenes.push_back(arguments::scene_rain_forever);
+    args.scenes.push_back(scene_number);
+    args.scenes.push_back(scene_banner);
+    args.scenes.push_back(scene_rain);
+    args.scenes.push_back(scene_conway);
+    args.scenes.push_back(scene_mandelbrot);
+    args.scenes.push_back(scene_rain_forever);
   }
+  for (std::string const& msg: args.messages)
+    buff.s2banner_add_message(msg);
 
   std::signal(SIGINT, trapint);
   std::signal(SIGWINCH, trapwinch);
@@ -1228,31 +1470,23 @@ int main(int argc, char** argv) {
   buff.term_enter();
   std::size_t index = 0;
   while (index < args.scenes.size()) {
-    auto const scene = args.scenes[index++];
+    scene_t const scene = args.scenes[index++];
     switch (scene) {
-    case arguments::scene_none:
+    case scene_none: break;
+    case scene_loop: index = 0; break;
+    default:
+      buff.scene(scene);
       break;
-    case arguments::scene_number:
-      buff.s1number();
-      break;
-    case arguments::scene_banner:
-      buff.s2banner(args.messages);
-      break;
-    case arguments::scene_rain:
-      buff.s3rain(2800, buffer::s3rain_scroll_func_tanh);
-      break;
-    case arguments::scene_conway:
-      buff.s4conway();
-      break;
-    case arguments::scene_mandelbrot:
-      buff.s5mandel();
-      break;
-    case arguments::scene_rain_forever:
-      buff.s3rain(0, buffer::s3rain_scroll_func_const);
-      break;
-    case arguments::scene_loop:
-      index = 0;
-      break;
+    }
+
+    if (buff.is_menu) break;
+  }
+
+  if (buff.is_menu) {
+    for (;;) {
+      buff.is_menu = true;
+      scene_t const scene = (scene_t) buff.scene_menu();
+      buff.scene(scene);
     }
   }
 
