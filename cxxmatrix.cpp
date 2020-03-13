@@ -208,7 +208,7 @@ public:
     tcgetattr(STDIN_FILENO, &this->term_termios_save);
     struct termios termios = this->term_termios_save;
     termios.c_lflag &= ~(ECHO | ICANON | IEXTEN); // シグナルは使うので ISIG は消さない
-    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
+    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON); //
     termios.c_cflag &= ~(CSIZE | PARENB);
     termios.c_cflag |= CS8;
     termios.c_oflag &= ~(OPOST);
@@ -497,6 +497,15 @@ private:
   byte color_table[11] = {16, 22, 28, 35, 41, 47, 84, 121, 157, 194, 231, };
   //byte color_table[11] = {16, 22, 29, 35, 42, 48, 85, 121, 158, 194, 231, };
 
+  void clear_content() {
+    for (auto& tcell: new_content) {
+      tcell.c = ' ';
+      tcell.fg = color_table[0];
+      tcell.bg = color_table[0];
+      tcell.bold = false;
+    }
+  }
+
   cell_t const* rend_cell(int x, int y, double& power) {
     cell_t const* ret = nullptr;
     for (auto& layer: layers) {
@@ -707,6 +716,7 @@ private:
 
 public:
   void s1number() {
+    clear_content();
     int stripe_periods[] = {0, 32, 16, 8, 4, 2, 2, 2};
     for (int stripe: stripe_periods) {
       for (int i = 0; i < 20; i++) {
@@ -942,8 +952,8 @@ private:
       s2banner_put_char(x0, y0, x, y, type, util::rand_char());
   }
 
-  void s2banner_add_thread() {
-    if (now % (1 + 2000 / cols) == 0) {
+  void s2banner_add_thread(int ilayer, int interval) {
+    if (now % (1 + interval / cols) == 0) {
       thread_t thread;
       thread.x = util::rand() % cols;
       thread.y = 0;
@@ -951,7 +961,7 @@ private:
       thread.speed = 8;
       thread.power = 0.5;
       thread.decay = config::default_decay;
-      layers[1].add_thread(thread);
+      layers[ilayer].add_thread(thread);
     }
   }
 
@@ -1028,7 +1038,7 @@ private:
         break;
       }
 
-      s2banner_add_thread();
+      s2banner_add_thread(1, 2000);
       render_layers();
       scheduler.next_frame();
       kreader.process();
@@ -1194,7 +1204,7 @@ private:
     double const flags = scene == menu_index ? 0 : cflag_disable_bold;
     for (std::size_t i = 0; i < len; i++) {
       cell_t& cell = layers[0].cell(x0 + i * progress, y0);
-      cell.c = name[i];
+      cell.c = std::toupper(name[i]);
       cell.birth = now;
       cell.power = power;
       cell.decay = 20;
@@ -1202,7 +1212,7 @@ private:
     }
   }
 public:
-  int scene_menu() {
+  int show_menu() {
     while (is_menu) {
       int const line_height = std::min(3, rows / scene_count);
       int const y0 = (rows - scene_count * line_height) / 2;
@@ -1214,6 +1224,7 @@ public:
       menu_frame_draw_string(y0 + i++ * line_height, scene_mandelbrot  , "Mandelbrot set");
       menu_frame_draw_string(y0 + i++ * line_height, scene_rain_forever, "Rain forever");
 
+      s2banner_add_thread(1, 5000);
       render_layers();
       scheduler.next_frame();
       kreader.process();
@@ -1294,8 +1305,9 @@ public:
       "   -m, --message=MESSAGE\n"
       "               Add a message\n"
       "   -s, --scene=SCENE\n"
-      "               Add a scene. One of 'number', 'banner', 'rain', 'conway',\n"
-      "               'mandelbrot', 'rain_forever' and 'loop'.\n"
+      "               Add scenes. Comma separated list of 'number', 'banner', 'rain',\n"
+      "               'conway', 'mandelbrot', 'rain-forever' and 'loop'.\n"
+      //------------------------------------------------------------------------------
       "\n"
       "MESSAGE\n"
       "   Add a message\n"
@@ -1364,28 +1376,31 @@ public:
   std::vector<scene_t> scenes;
 private:
   void push_scene(const char* scene) {
-    if (std::strcmp(scene, "number") == 0) {
-      scenes.push_back(scene_number);
-    } else if (std::strcmp(scene, "banner") == 0) {
-      scenes.push_back(scene_banner);
-    } else if (std::strcmp(scene, "conway") == 0) {
-      scenes.push_back(scene_conway);
-    } else if (std::strcmp(scene, "rain") == 0) {
-      scenes.push_back(scene_rain);
-    } else if (std::strcmp(scene, "mandelbrot") == 0) {
-      scenes.push_back(scene_mandelbrot);
-    } else if (std::strcmp(scene, "loop") == 0) {
-      if (scenes.empty()) {
-        std::fprintf(stderr, "cxxmatrrix: nothing to loop (-s loop)\n");
+    std::vector<std::string_view> names = util::split(scene, ',');
+    for (auto const& name: names) {
+      if (name == "number") {
+        scenes.push_back(scene_number);
+      } else if (name == "banner") {
+        scenes.push_back(scene_banner);
+      } else if (name == "conway") {
+        scenes.push_back(scene_conway);
+      } else if (name == "rain") {
+        scenes.push_back(scene_rain);
+      } else if (name == "mandelbrot") {
+        scenes.push_back(scene_mandelbrot);
+      } else if (name == "loop") {
+        if (scenes.empty()) {
+          std::fprintf(stderr, "cxxmatrrix: nothing to loop (-s loop)\n");
+          flag_error = true;
+          return;
+        }
+        scenes.push_back(scene_loop);
+      } else if (name == "rain-forever") {
+        scenes.push_back(scene_rain_forever);
+      } else {
+        std::fprintf(stderr, "cxxxmatrix: unknown value for scene (%.*s)\n", (int) name.size(), name.data());
         flag_error = true;
-        return;
       }
-      scenes.push_back(scene_loop);
-    } else if (std::strcmp(scene, "rain-forever") == 0) {
-      scenes.push_back(scene_rain_forever);
-    } else {
-      std::fprintf(stderr, "cxxxmatrix: unknown value for scene (%s)\n", scene);
-      flag_error = true;
     }
   }
 
@@ -1485,7 +1500,7 @@ int main(int argc, char** argv) {
   if (buff.is_menu) {
     for (;;) {
       buff.is_menu = true;
-      scene_t const scene = (scene_t) buff.scene_menu();
+      scene_t const scene = (scene_t) buff.show_menu();
       buff.scene(scene);
     }
   }

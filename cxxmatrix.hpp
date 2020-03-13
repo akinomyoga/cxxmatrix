@@ -3,13 +3,13 @@
 #include <cstdint>
 #include <random>
 #include <limits>
+#include <string>
 
 namespace cxxmatrix {
   typedef uint8_t byte;
 }
 
 namespace cxxmatrix::util {
-
 
 inline std::mt19937& rand_engine() {
   static std::random_device seed_gen;
@@ -46,6 +46,17 @@ inline int mod(int value, int modulo) {
 
 inline constexpr double interpolate(double value, double a, double b) {
   return a + (b - a) * value;
+}
+
+inline std::vector<std::string_view> split(const char* text, char c) {
+  std::vector<std::string_view> vec;
+  char const* p = text;
+  do {
+    char const* s = p;
+    while (*p && *p != c) p++;
+    vec.emplace_back(s, p - s);
+  } while (*p++ == c);
+  return vec;
 }
 
 }
