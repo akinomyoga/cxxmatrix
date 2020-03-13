@@ -11,6 +11,7 @@
 #include <sys/ioctl.h>
 #include <termios.h>
 #include <fcntl.h>
+#include <poll.h>
 
 #include <vector>
 #include <algorithm>
@@ -175,30 +176,10 @@ struct key_reader {
 
   std::function<void(key_t)> proc;
 
-private:
-  static bool term_set_nonblock(int fd, bool value) {
-    int flags = fcntl(fd, F_GETFL, 0);
-    if (flags < 0) {
-      perror("contra::term (fd_set_nonblock/fcntl(0, F_GETFL))");
-      exit(1);
-    }
-
-    bool const old_status = flags & O_NONBLOCK;
-    if (old_status == value) return old_status;
-
-    int const result = fcntl(fd, F_SETFL, flags ^ O_NONBLOCK);
-    if (result < 0) {
-      perror("contra::term (fd_set_nonblock/fcntl(0, F_SETFL))");
-      exit(1);
-    }
-    return old_status;
-  }
-
 public:
   void leave() {
     if (!term_internal) return;
     term_internal = false;
-    term_set_nonblock(STDIN_FILENO, term_nonblock_save);
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &this->term_termios_save);
   }
   void enter() {
@@ -208,15 +189,13 @@ public:
     tcgetattr(STDIN_FILENO, &this->term_termios_save);
     struct termios termios = this->term_termios_save;
     termios.c_lflag &= ~(ECHO | ICANON | IEXTEN); // シグナルは使うので ISIG は消さない
-    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON); //
+    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
     termios.c_cflag &= ~(CSIZE | PARENB);
     termios.c_cflag |= CS8;
     termios.c_oflag &= ~(OPOST);
     termios.c_cc[VMIN]  = 1;
     termios.c_cc[VTIME] = 0;
     tcsetattr(STDIN_FILENO, TCSAFLUSH, &termios);
-
-    term_nonblock_save = term_set_nonblock(STDIN_FILENO, true);
   }
 
 private:
@@ -250,11 +229,20 @@ private:
       process_key(b);
     }
   }
+  static ssize_t nonblock_read(int fd, byte* buffer, ssize_t size) {
+    struct pollfd pollfd;
+    pollfd.fd = fd;
+    pollfd.events = POLLIN | POLLERR;
+    poll(&pollfd, 1, 0);
+    if (pollfd.revents & POLLIN)
+      return read(fd, buffer, size);
+    return 0;
+  }
 public:
   void process() {
     byte buffer[1024];
     ssize_t nread;
-    while ((nread = read(STDIN_FILENO, buffer, 1024)) > 0) {
+    while ((nread = nonblock_read(STDIN_FILENO, buffer, 1024)) > 0) {
       for (ssize_t i = 0; i < nread; i++)
         process_byte(buffer[i]);
     }
