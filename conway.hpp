@@ -14,6 +14,7 @@ namespace cxxmatrix {
 
   public:
     void initialize() {
+      this->time = 1;
       data1.resize(width * height);
       data2.resize(width * height);
       std::generate(data1.begin(), data1.end(), [] () { return util::rand() & 1; });
@@ -32,7 +33,7 @@ namespace cxxmatrix {
     byte& get2(int x, int y) { return data2[index(x, y)]; }
 
   private:
-    std::uint32_t time = 1.0;
+    std::uint32_t time = 1;
     void create4x4() {
       double const prob = (width / 100.0) * (height / 100.0);
       if (util::rand() % std::min<int>(1, 100 / prob)== 0) {

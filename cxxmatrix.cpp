@@ -10,7 +10,6 @@
 #include <unistd.h>
 #include <sys/ioctl.h>
 #include <termios.h>
-#include <fcntl.h>
 #include <poll.h>
 
 #include <vector>
@@ -571,7 +570,7 @@ public:
   void term_leave() {
     if (!term_internal) return;
     term_internal = false;
-    std::fprintf(file, "\x1b[%dH\n", rows);
+    std::fprintf(file, "\x1b[m\x1b[%dH\n", rows);
     std::fprintf(file, "\x1b[?1049l\x1b[?25h");
     std::fflush(file);
     kreader.leave();
@@ -641,7 +640,15 @@ public:
 public:
   void s3rain(std::uint32_t nloop, double (*scroll_func)(double)) {
     static byte speed_table[] = {2, 2, 2, 2, 3, 3, 6, 6, 6, 7, 7, 8, 8, 8};
+
     double const scr0 = scroll_func(0);
+    int initial_scrollx[3];
+    int initial_scrolly[3];
+    for (int i = 0; i < 3; i++) {
+      initial_scrollx[i] = layers[i].scrollx;
+      initial_scrolly[i] = layers[i].scrolly;
+    }
+
     for (std::uint32_t loop = 0; nloop == 0 || loop < nloop; loop++) {
       // add new threads
       if (now % (1 + 150 / cols) == 0) {
@@ -658,13 +665,13 @@ public:
       }
 
       double const scr = scroll_func(loop) - scr0;
-      layers[0].scrollx = -std::round(500 * scr);
-      layers[1].scrollx = -std::round(50 * scr);
-      layers[2].scrollx = +std::round(200 * scr);
+      layers[0].scrollx = initial_scrollx[0] - std::round(500 * scr);
+      layers[1].scrollx = initial_scrollx[1] - std::round(50 * scr);
+      layers[2].scrollx = initial_scrollx[2] + std::round(200 * scr);
 
-      layers[0].scrolly = -std::round(25 * scr);
-      layers[1].scrolly = +std::round(20 * scr);
-      layers[2].scrolly = +std::round(45 * scr);
+      layers[0].scrolly = initial_scrolly[0] - std::round(25 * scr);
+      layers[1].scrolly = initial_scrolly[1] + std::round(20 * scr);
+      layers[2].scrolly = initial_scrolly[2] + std::round(45 * scr);
 
       render_layers();
       scheduler.next_frame();
@@ -832,6 +839,8 @@ private:
       // Adjust rendering width
       int rest = cols - this->min_width - 4;
       this->render_width = this->min_width;
+      for (glyph_t& g: glyphs)
+        g.render_width = g.w + 1;
       while (rest > 0) {
         int min_progress = glyphs[0].render_width;
         int min_progress_count = 0;
@@ -910,10 +919,10 @@ private:
 
   void s2banner_put_char(int x0, int y0, int x, int y, int type, char32_t uchar) {
     if (type == 0) {
-      cell_t& cell = layers[0].cell(x0 + x, y0 + y);
+      cell_t& cell = layers[0].rcell(x0 + x, y0 + y);
       cell.c = ' ';
     } else if (type == 1) {
-      cell_t& cell = layers[0].cell(x0 + x, y0 + y);
+      cell_t& cell = layers[0].rcell(x0 + x, y0 + y);
       cell.c = uchar;
       cell.birth = now;
       cell.power = 1.0;
@@ -1191,7 +1200,7 @@ private:
     double const power = scene == menu_index ? 1.0 : 0.5;
     double const flags = scene == menu_index ? 0 : cflag_disable_bold;
     for (std::size_t i = 0; i < len; i++) {
-      cell_t& cell = layers[0].cell(x0 + i * progress, y0);
+      cell_t& cell = layers[0].rcell(x0 + i * progress, y0);
       cell.c = std::toupper(name[i]);
       cell.birth = now;
       cell.power = power;
@@ -1287,18 +1296,19 @@ public:
       "cxxmatrix (C++ Matrix)\n"
       "usage: cxxmatrix [OPTIONS...] [[--] MESSAGE...]\n"
       "\n"
+      "MESSAGE\n"
+      "   Add a message for 'banner' scene.  When no messages are specified a message\n"
+      "   \"C++ MATRIX\" will be used.\n"
+      "\n"
+      //------------------------------------------------------------------------------
       "OPTIONS\n"
       "   --help      Show help\n"
       "   --          The rest arguments are processed as MESSAGE\n"
       "   -m, --message=MESSAGE\n"
-      "               Add a message\n"
+      "               Add a message for 'banner' scene.\n"
       "   -s, --scene=SCENE\n"
       "               Add scenes. Comma separated list of 'number', 'banner', 'rain',\n"
       "               'conway', 'mandelbrot', 'rain-forever' and 'loop'.\n"
-      //------------------------------------------------------------------------------
-      "\n"
-      "MESSAGE\n"
-      "   Add a message\n"
       "\n"
       "Keyboard\n"
       "   C-c (SIGINT)  Quit\n"
@@ -1378,7 +1388,7 @@ private:
         scenes.push_back(scene_mandelbrot);
       } else if (name == "loop") {
         if (scenes.empty()) {
-          std::fprintf(stderr, "cxxmatrrix: nothing to loop (-s loop)\n");
+          std::fprintf(stderr, "cxxmatrix: nothing to loop (-s loop)\n");
           flag_error = true;
           return;
         }
@@ -1461,8 +1471,12 @@ int main(int argc, char** argv) {
     args.scenes.push_back(scene_mandelbrot);
     args.scenes.push_back(scene_rain_forever);
   }
-  for (std::string const& msg: args.messages)
-    buff.s2banner_add_message(msg);
+  if (args.messages.size()) {
+    for (std::string const& msg: args.messages)
+      buff.s2banner_add_message(msg);
+  } else {
+    buff.s2banner_add_message("C++ Matrix");
+  }
 
   std::signal(SIGINT, trapint);
   std::signal(SIGWINCH, trapwinch);
