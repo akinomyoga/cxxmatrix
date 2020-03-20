@@ -6,6 +6,7 @@
 #include <cstring>
 #include <cassert>
 #include <cmath>
+#include <cctype>
 
 #include <unistd.h>
 #include <sys/ioctl.h>
@@ -51,7 +52,7 @@ struct tcell_t {
   byte fg = 16;
   byte bg = 16;
   bool bold = false;
-  int diffuse = 0;
+  double diffuse = 0;
 };
 
 enum cell_flags
@@ -273,6 +274,11 @@ struct buffer {
   frame_scheduler scheduler;
   key_reader kreader;
 
+public:
+  buffer() {
+    initialize_color_table(47);
+  }
+
 private:
   void put_utf8(char32_t uc) {
     std::uint32_t u = uc;
@@ -457,7 +463,7 @@ private:
       }
     }
   }
-  void add_diffuse(int x, int y, int value) {
+  void add_diffuse(int x, int y, double value) {
     if (0 <= y && y < rows && 0 <= x && x < cols && value > 0) {
       std::size_t const index = y * cols + x;
       tcell_t& tcell = new_content[index];
@@ -469,7 +475,8 @@ private:
       for (int x = 0; x < cols; x++) {
         std::size_t const index = y * cols + x;
         tcell_t& tcell = new_content[index];
-        tcell.bg = color_table[std::min<int>(0.4 * tcell.diffuse, 3)];
+        double const diffuse = std::min(0.04 * tcell.diffuse, 0.3);
+        tcell.bg = color_table[(int) std::round(diffuse * (color_table.size() - 1))];
       }
     }
   }
@@ -480,10 +487,59 @@ public:
   double twinkle = default_twinkle;
 
 private:
-  //byte color_table[11] = {16, 22, 28, 34, 40, 46, 83, 120, 157, 194, 231, };
-  byte color_table[11] = {16, 22, 28, 35, 41, 47, 84, 121, 157, 194, 231, };
-  //byte color_table[11] = {16, 22, 29, 35, 42, 48, 85, 121, 158, 194, 231, };
+  std::vector<byte> color_table;
 
+  static int get_color_code(double R, double G, double B) {
+    int r = std::round(R * 5);
+    int g = std::round(G * 5);
+    int b = std::round(B * 5);
+    return 16 + r * 36 + g * 6 + b;
+  }
+  bool initialize_color_table_rgb(byte r, byte g, byte b) {
+    int const mx = std::max(r, std::max(g, b));
+    int const mn = std::min(r, std::min(g, b));
+    if (mx == 0) return false;
+    double const R = (double) r / mx;
+    double const G = (double) g / mx;
+    double const B = (double) b / mx;
+
+    color_table.clear();
+    color_table.reserve(6 + 5 - mn);
+    for (int i = 0; i <= 5; i++)
+      color_table.push_back(get_color_code(R * i / 5, G * i / 5, B * i / 5));
+    for (int i = mn + 1; i <= 5; i++) {
+      double const R1 = 1.0 - (1.0 - R) * (5 - i) / (5 - mn);
+      double const G1 = 1.0 - (1.0 - G) * (5 - i) / (5 - mn);
+      double const B1 = 1.0 - (1.0 - B) * (5 - i) / (5 - mn);
+      color_table.push_back(get_color_code(R1, G1, B1));
+    }
+    return true;
+  }
+  void initialize_color_table_gray() {
+    color_table.clear();
+    color_table.reserve(25);
+    for (int i = 232; i < 256; i++)
+      color_table.push_back(i);
+    color_table.push_back(231);
+  }
+public:
+  void initialize_color_table(byte color) {
+    if (color < 16) {
+      int const r = color & 1;
+      int const g = color / 2 & 1;
+      int const b = color / 4 & 1;
+      if (initialize_color_table_rgb(r, g, b)) return;
+    } else if (color < 232) {
+      color -= 16;
+      int const r = color / 36;
+      int const g = color / 6 % 6;
+      int const b = color % 6;
+      if (initialize_color_table_rgb(r, g, b)) return;
+    }
+    initialize_color_table_gray();
+  }
+
+private:
   void clear_content() {
     for (auto& tcell: new_content) {
       tcell.c = ' ';
@@ -528,23 +584,24 @@ private:
         }
 
         // level = 色番号
-        double const fractional_level = util::interpolate(current_power, 0.6, std::size(color_table));
+        double const fractional_level = util::interpolate(current_power, 0.6, color_table.size());
         int level = fractional_level;
         if (twinkle != 0.0 && util::randf() > fractional_level - level) level++;
-        level = std::min<int>(level, std::size(color_table) - 1);
+        level = std::min<int>(level, color_table.size() - 1);
 
         tcell.fg = color_table[level];
         tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 0.5;
 
-        tcell.diffuse += level / 3;
-        add_diffuse(x - 1, y, level / 3 - 1);
-        add_diffuse(x + 1, y, level / 3 - 1);
-        add_diffuse(x, y - 1, level / 3 - 1);
-        add_diffuse(x, y + 1, level / 3 - 1);
-        add_diffuse(x - 1, y - 1, level / 5 - 1);
-        add_diffuse(x + 1, y - 1, level / 5 - 1);
-        add_diffuse(x - 1, y + 1, level / 5 - 1);
-        add_diffuse(x + 1, y + 1, level / 5 - 1);
+        double const twinkle_power = (double) level / (color_table.size() - 1);
+        tcell.diffuse += 2.0 * twinkle_power;
+        add_diffuse(x - 1, y, 2.0 * (twinkle_power - 0.5));
+        add_diffuse(x + 1, y, 2.0 * (twinkle_power - 0.5));
+        add_diffuse(x, y - 1, 2.0 * (twinkle_power - 0.5));
+        add_diffuse(x, y + 1, 2.0 * (twinkle_power - 0.5));
+        add_diffuse(x - 1, y - 1, 1.5 * (twinkle_power - 0.7));
+        add_diffuse(x + 1, y - 1, 1.5 * (twinkle_power - 0.7));
+        add_diffuse(x - 1, y + 1, 1.5 * (twinkle_power - 0.7));
+        add_diffuse(x + 1, y + 1, 1.5 * (twinkle_power - 0.7));
       }
     }
 
@@ -703,7 +760,7 @@ private:
           cell.decay = config::default_decay;
           cell.flags = cflag_disable_bold;
           tcell.c = cell.c;
-          tcell.fg = color_table[std::size(color_table) / 2 + util::rand_char() % 3];
+          tcell.fg = color_table[color_table.size() / 2 + util::rand_char() % 3];
         }
       }
     }
@@ -1309,6 +1366,10 @@ public:
       "   -s, --scene=SCENE\n"
       "               Add scenes. Comma separated list of 'number', 'banner', 'rain',\n"
       "               'conway', 'mandelbrot', 'rain-forever' and 'loop'.\n"
+      "   -c, --color=COLOR\n"
+      "               Set color. One of 'default', 'black', 'red', 'green', 'yellow',\n"
+      "               'blue', 'magenta', 'cyan', 'white', and integer 0-255 (256 index\n"
+      "               color).\n"
       "\n"
       "Keyboard\n"
       "   C-c (SIGINT)  Quit\n"
@@ -1403,6 +1464,50 @@ private:
   }
 
 public:
+  byte color = 47;
+private:
+  void set_color(const char* color_name) {
+    std::string_view view = color_name;
+    if (view == "black") {
+      this->color = 0;
+      return;
+    } else if (view == "red") {
+      this->color = 1;
+      return;
+    } else if (view == "green") {
+      this->color = 2;
+      return;
+    } else if (view == "yellow") {
+      this->color = 3;
+      return;
+    } else if (view == "blue") {
+      this->color = 4;
+      return;
+    } else if (view == "magenta") {
+      this->color = 5;
+      return;
+    } else if (view == "cyan") {
+      this->color = 6;
+      return;
+    } else if (view == "white") {
+      this->color = 7;
+      return;
+    } else if (view == "default") {
+      this->color = 47;
+      return;
+    } else if (std::isdigit(view[0])) {
+      int const value = std::atoi(view.data());
+      if (value < 256) {
+        this->color = value;
+        return;
+      }
+    }
+
+    std::fprintf(stderr, "cxxmatrix: invalid value for color (%s)\n", view.data());
+    flag_error = true;
+  }
+
+public:
   bool process(int argc, char** argv) {
     bool flag_literal = false;
     this->argc = argc;
@@ -1421,6 +1526,8 @@ public:
             push_message(get_longoptarg());
           } else if (is_longopt("scene")) {
             push_scene(get_longoptarg());
+          } else if (is_longopt("color")) {
+            set_color(get_longoptarg());
           } else {
             std::fprintf(stderr, "cxxmatrix: unknown long option (--%s)\n", arg);
             flag_error = true;
@@ -1436,6 +1543,10 @@ public:
             case 's':
               if (char const* opt = get_optarg(c))
                 push_scene(opt);
+              break;
+            case 'c':
+              if (char const* opt = get_optarg(c))
+                set_color(opt);
               break;
             default:
               std::fprintf(stderr, "cxxmatrix: unknown option (-%c)\n", c);
@@ -1477,6 +1588,7 @@ int main(int argc, char** argv) {
   } else {
     buff.s2banner_add_message("C++ Matrix");
   }
+  buff.initialize_color_table(args.color);
 
   std::signal(SIGINT, trapint);
   std::signal(SIGWINCH, trapwinch);
