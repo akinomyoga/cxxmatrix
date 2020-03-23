@@ -49,15 +49,36 @@ $ make
 $ ./cxxmatrix 'The Matrix' 'Reloaded'
 ```
 
-**Quit**: <kbd>C-c</kbd>; **Suspend**: <kbd>C-z</kbd>; **Menu**: <kbd>RET</kbd>, <kbd>C-m</kbd>
-
 **Options**
 
-Please check the help with the option `--help`:
+Check the help with the option `--help` for details:
 
 ```console
 $ ./cxxmatrix --help
 ```
+
+**Keyboard**
+
+Quit: <kbd>C-c</kbd>; Suspend: <kbd>C-z</kbd>; Menu: <kbd>RET</kbd>, <kbd>C-m</kbd>
+
+## Install
+
+The default install prefix is `/usr/local`. `/usr/local/bin/cxxmatrix` and `/usr/local/share/man/man1/cxxmatrix.1.gz` will be created.
+
+```console
+$ sudo make install
+```
+
+To change the install prefix, please specify the make variable `PREFIX`:
+
+```bash
+# Example 1
+sudo make PREFIX=/opt/cxxmatrix install
+
+# Example 2
+make PREFIX=~/.local install
+```
+
 
 # Similar programs
 

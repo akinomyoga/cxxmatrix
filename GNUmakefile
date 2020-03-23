@@ -45,4 +45,14 @@ glyph.inl: glyph.awk glyph.def
 clean:
 	-rm -rf *.o glyph.inl
 
+ifeq ("$(PREFIX)","")
+  PREFIX := /usr/local
+endif
+install: cxxmatrix
+	mkdir -p "$(PREFIX)/bin"
+	cp cxxmatrix "$(PREFIX)/bin/cxxmatrix"
+	chmod +x "$(PREFIX)/bin/cxxmatrix"
+	mkdir -p "$(PREFIX)/share/man/man1"
+	gzip -c cxxmatrix.1 > "$(PREFIX)/share/man/man1/cxxmatrix.1.gz"
+
 #------------------------------------------------------------------------------

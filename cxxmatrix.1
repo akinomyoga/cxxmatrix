@@ -1,0 +1,70 @@
+.TH "C++ Matrix" 1 "2020-03-23" "Man Page" "Utility Commands"
+
+.SH NAME
+C++ Matrix \- The Matrix Reloaded in Terminals
+
+.SH SYNOPSIS
+.B cxxmatrix
+[\fIOPTION\fR]... [[\-\-] \fIMESSAGE\fR...]
+
+.SH DESCRIPTION
+Show number falls, banners, the Matrix rains, Conway's Game of Life and the Mandelbrot set in terminals.
+The purpose of this program is to test the performance of terminal emulators.
+
+.SS MESSAGE
+Add a message for '\fIbanner\fR' scene.  When no messages are specified, a
+message "C++ MATRIX" will be used.
+
+.SS OPTIONS
+
+.TP
+.B "\-\-help"
+Show help
+
+.TP
+.B \-\-
+The rest arguments are processed as \fIMESSAGE\fR.
+
+.TP
+.B \-m, \-\-message=\fIMESSAGE
+Add a message for '\fIbanner\fR' scene.
+
+.TP
+.B \-s, \-\-scene=\fISCENE
+Add scenes.
+Comma separated list of '\fInumber\fR', '\fIbanner\fR', '\fIrain\fR', '\fIconway\fR', '\fImandelbrot\fR', '\fIrain\-forever\fR' and '\fIloop\fR'.
+
+.TP
+.B \-c, \-\-color=\fICOLOR
+Set color.
+One of '\fIdefault\fR', '\fIblack\fR', '\fIred\fR', '\fIgreen\fR', '\fIyellow\fR', '\fIblue\fR', '\fImagenta\fR', '\fIcyan\fR', '\fIwhite\fR',
+and integer \fI0\fR\-\fI255\fR (256 index color).
+
+.SS Keyboard
+
+.TP
+.B C-c (SIGINT)
+Quit
+
+.TP
+.B C-z (SIGTSTP)
+Suspend
+
+.TP
+.B C-m, RET
+Show menu
+
+.SH AUTHOR
+Written by Koichi Murase @akinomyoga <https://github.com/akinomyoga>
+
+.SS COPYRIGHT
+Copyright (C) 2020 Koichi Murase @akinomyoga <myoga.murae@gmail.com>.
+
+.SS LICENSE
+The source code is provided with MIT license.
+
+.SS WEB PAGE
+GitHub page <https://github.com/akinomyoga/cxxmatrix>
+
+.SS REPORTING BUGS
+Create an issue at the GitHub page <https://github.com/akinomyoga/cxxmatrix/issues>.

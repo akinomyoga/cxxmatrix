@@ -1354,8 +1354,8 @@ public:
       "usage: cxxmatrix [OPTIONS...] [[--] MESSAGE...]\n"
       "\n"
       "MESSAGE\n"
-      "   Add a message for 'banner' scene.  When no messages are specified a message\n"
-      "   \"C++ MATRIX\" will be used.\n"
+      "   Add a message for 'banner' scene.  When no messages are specified, a\n"
+      "   message \"C++ MATRIX\" will be used.\n"
       "\n"
       //------------------------------------------------------------------------------
       "OPTIONS\n"
