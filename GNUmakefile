@@ -1,7 +1,7 @@
 # -*- mode: makefile-gmake -*-
 
-.PHONY: all clean
 all:
+.PHONY: all clean install
 
 #------------------------------------------------------------------------------
 # Settings
@@ -54,5 +54,7 @@ install: cxxmatrix
 	chmod +x "$(PREFIX)/bin/cxxmatrix"
 	mkdir -p "$(PREFIX)/share/man/man1"
 	gzip -c cxxmatrix.1 > "$(PREFIX)/share/man/man1/cxxmatrix.1.gz"
+	mkdir -p "$(PREFIX)/share/licenses/cxxmatrix"
+	cp LICENSE.md "$(PREFIX)/share/licenses/cxxmatrix/LICENSE.md"
 
 #------------------------------------------------------------------------------
