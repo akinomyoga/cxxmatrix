@@ -476,7 +476,7 @@ private:
         std::size_t const index = y * cols + x;
         tcell_t& tcell = new_content[index];
         double const diffuse = std::min(0.04 * tcell.diffuse, 0.3);
-        tcell.bg = color_table[(int) std::round(diffuse * (color_table.size() - 1))];
+        tcell.bg = color_table[(int) (diffuse * (color_table.size() - 1))];
       }
     }
   }
@@ -593,15 +593,19 @@ private:
         tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 0.5;
 
         double const twinkle_power = (double) level / (color_table.size() - 1);
-        tcell.diffuse += 2.0 * twinkle_power;
-        add_diffuse(x - 1, y, 2.0 * (twinkle_power - 0.5));
-        add_diffuse(x + 1, y, 2.0 * (twinkle_power - 0.5));
-        add_diffuse(x, y - 1, 2.0 * (twinkle_power - 0.5));
-        add_diffuse(x, y + 1, 2.0 * (twinkle_power - 0.5));
-        add_diffuse(x - 1, y - 1, 1.5 * (twinkle_power - 0.7));
-        add_diffuse(x + 1, y - 1, 1.5 * (twinkle_power - 0.7));
-        add_diffuse(x - 1, y + 1, 1.5 * (twinkle_power - 0.7));
-        add_diffuse(x + 1, y + 1, 1.5 * (twinkle_power - 0.7));
+        double const p0 = ((1.0 / 0.3) * (twinkle_power - 0.0));
+        double const p1 = ((1.0 / 0.3) * (twinkle_power - 0.3));
+        double const p2 = ((1.0 / 0.5) * (twinkle_power - 0.7));
+
+        tcell.diffuse += p0;
+        add_diffuse(x - 1, y, p1);
+        add_diffuse(x + 1, y, p1);
+        add_diffuse(x, y - 1, p1);
+        add_diffuse(x, y + 1, p1);
+        add_diffuse(x - 1, y - 1, p2);
+        add_diffuse(x + 1, y - 1, p2);
+        add_diffuse(x - 1, y + 1, p2);
+        add_diffuse(x + 1, y + 1, p2);
       }
     }
 
