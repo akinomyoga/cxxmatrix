@@ -271,8 +271,30 @@ struct buffer {
 
   layer_t layers[3];
 
+private:
+  bool flag_sigwinch = false;
+public:
+  void set_sigwinch() {
+    flag_sigwinch = true;
+  }
+  void process_signals() {
+    if (flag_sigwinch) {
+      flag_sigwinch = false;
+      initialize();
+      redraw();
+    }
+  }
+
+private:
   frame_scheduler scheduler;
+  void next_frame() {
+    process_signals();
+    scheduler.next_frame();
+  }
+
+public:
   key_reader kreader;
+
 
 public:
   buffer() {
@@ -450,6 +472,7 @@ public:
       }
     }
     std::fflush(file);
+    process_signals();
   }
 
 private:
@@ -735,14 +758,14 @@ public:
       layers[2].scrolly = initial_scrolly[2] + std::round(45 * scr);
 
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
     std::uint32_t const wait = 8 * rows + config::default_decay;
     for (std::uint32_t loop = 0; loop < wait; loop++) {
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
@@ -778,7 +801,7 @@ public:
       for (int i = 0; i < 20; i++) {
         s1number_fill_numbers(stripe);
         render_direct();
-        scheduler.next_frame();
+        next_frame();
         kreader.process();
         if (is_menu) return;
       }
@@ -1098,7 +1121,7 @@ private:
 
       s2banner_add_thread(1, 2000);
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
@@ -1166,7 +1189,7 @@ public:
       s4conway_board.step(time);
       s4conway_frame(0.5 + loop * 0.01, 0.01 * distance, std::min(0.8, 3.0 / std::sqrt(distance)));
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
@@ -1210,13 +1233,13 @@ public:
       theta -= 0.01;
       s5mandel_frame(theta, scale, std::min(0.01 * loop, 1.0));
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
     for (loop = 0; loop < 100; loop++) {
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (is_menu) return;
     }
@@ -1284,7 +1307,7 @@ public:
 
       s2banner_add_thread(1, 5000);
       render_layers();
-      scheduler.next_frame();
+      next_frame();
       kreader.process();
       if (!is_menu) break;
     }
@@ -1330,8 +1353,7 @@ void trapint(int sig) {
   std::exit(128 + sig);
 }
 void trapwinch(int) {
-  buff.initialize();
-  buff.redraw();
+  buff.set_sigwinch();
 }
 void traptstp(int sig) {
   buff.term_leave();
