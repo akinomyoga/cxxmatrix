@@ -40,6 +40,31 @@ Set color.
 One of '\fIdefault\fR', '\fIblack\fR', '\fIred\fR', '\fIgreen\fR', '\fIyellow\fR', '\fIblue\fR', '\fImagenta\fR', '\fIcyan\fR', '\fIwhite\fR',
 and integer \fI0\fR\-\fI255\fR (256 index color).
 
+.TP
+.B \-\-frame\-rate=\fINUM
+Set the frame rate per second.
+A positive number less than or equal to 1000.
+The default is 25.
+
+.TP
+.B \-\-error\-rate=\fINUM
+Set the factor for the rate of character changes.
+A non-negative number.
+The default is 1.0.
+
+.TP
+.B \-\-diffuse
+Turn on the background-color effect (default).
+.TP
+.B \-\-no\-diffuse
+Turn off the background-color effect.
+
+.TP
+.B \-\-rain\-density=\fINUM
+Set the factor for the density of rain drops.
+A positive number.
+The default is 1.0.
+
 .SS Keyboard
 
 .TP
