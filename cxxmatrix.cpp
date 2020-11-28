@@ -276,6 +276,7 @@ struct buffer {
 private:
   bool setting_diffuse_enabled = true;
   bool setting_twinkle_enabled = true;
+  bool setting_preserve_background = false;
   double setting_rain_interval = 150;
 public:
   void set_diffuse_enabled(bool value) {
@@ -284,6 +285,9 @@ public:
   void set_twinkle_enabled(bool value) {
     this->setting_twinkle_enabled = value;
     this->update_twinkle_rendering();
+  }
+  void set_preserve_background(bool value) {
+    this->setting_preserve_background = value;
   }
   void set_rain_density(double value) {
     setting_rain_interval = 150 / value;
@@ -373,7 +377,10 @@ private:
   void set_color(tcell_t const& tcell) {
     if (tcell.bg != this->bg) {
       this->bg = tcell.bg;
-      std::fprintf(file, "\x1b[48;5;%dm", this->bg);
+      if (setting_preserve_background && this->bg == color_table[0])
+        std::fprintf(file, "\x1b[49m");
+      else
+        std::fprintf(file, "\x1b[48;5;%dm", this->bg);
     }
     if (tcell.c != ' ') {
       if (tcell.fg != fg) {
@@ -442,7 +449,6 @@ private:
   }
 
 private:
-
   static bool is_changed(tcell_t const& ncell, tcell_t const& ocell) {
     if (ncell.c != ocell.c || ncell.bg != ocell.bg) return true;
     if (ncell.c == ' ') return false;
@@ -452,6 +458,7 @@ private:
   bool term_draw_cell(int x, int y, std::size_t index, bool force_write) {
     tcell_t& ncell = new_content[index];
     tcell_t& ocell = old_content[index];
+    if (ncell.fg == ocell.bg) ncell.c = ' ';
     if (force_write || is_changed(ncell, ocell)) {
       goto_xy(x, y);
       set_color(ncell);
@@ -1462,6 +1469,9 @@ public:
       "   --twinkle\n"
       "   --no-twinkle\n"
       "               Turn on/off the twinkling effect.  Turned on by default.\n"
+      "   --preserve-background\n"
+      "   --no-preserve-background\n"
+      "               Preserve terminal background or not.  Not preserve by default.\n"
       "   --rain-density=NUM\n"
       "               Set the factor for the density of rain drops.  A positive\n"
       "               number.  The default is 1.0.\n"
@@ -1605,6 +1615,7 @@ private:
 public:
   bool flag_diffuse_enabled = true;
   bool flag_twinkle_enabled = true;
+  bool flag_preserve_background = false;
   double frame_rate = 25;
   double error_rate = 1.0;
   double rain_density = 1.0;
@@ -1669,6 +1680,10 @@ public:
             flag_twinkle_enabled = true;
           } else if (is_longopt("no-twinkle")) {
             flag_twinkle_enabled = false;
+          } else if (is_longopt("preserve-background")) {
+            flag_preserve_background = true;
+          } else if (is_longopt("no-preserve-background")) {
+            flag_preserve_background = false;
           } else if (is_longopt("message")) {
             push_message(get_longoptarg());
           } else if (is_longopt("scene")) {
@@ -1746,6 +1761,7 @@ int main(int argc, char** argv) {
   buff.set_error_rate(args.error_rate);
   buff.set_diffuse_enabled(args.flag_diffuse_enabled);
   buff.set_twinkle_enabled(args.flag_twinkle_enabled);
+  buff.set_preserve_background(args.flag_preserve_background);
   buff.set_rain_density(args.rain_density);
 
   std::signal(SIGINT, trapint);

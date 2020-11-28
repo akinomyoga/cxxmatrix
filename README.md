@@ -88,6 +88,9 @@ OPTIONS
    --twinkle
    --no-twinkle
                Turn on/off the twinkling effect.  Turned on by default.
+   --preserve-background
+   --no-preserve-background
+               Preserve terminal background or not.  Not preserve by default.
    --rain-density=NUM
                Set the factor for the density of rain drops.  A positive
                number.  The default is 1.0.
