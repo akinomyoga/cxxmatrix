@@ -274,11 +274,16 @@ enum scene_t {
 
 struct buffer {
 private:
-  bool setting_diffuse = true;
+  bool setting_diffuse_enabled = true;
+  bool setting_twinkle_enabled = true;
   double setting_rain_interval = 150;
 public:
-  void set_diffuse(bool value) {
-    this->setting_diffuse = value;
+  void set_diffuse_enabled(bool value) {
+    this->setting_diffuse_enabled = value;
+  }
+  void set_twinkle_enabled(bool value) {
+    this->setting_twinkle_enabled = value;
+    this->update_twinkle_rendering();
   }
   void set_rain_density(double value) {
     setting_rain_interval = 150 / value;
@@ -539,9 +544,21 @@ private:
   }
 
 public:
-  static constexpr double default_twinkle = 0.2;
   int now = 100;
-  double twinkle = default_twinkle;
+
+private:
+  static constexpr double default_twinkle = 0.2;
+  double m_twinkle = default_twinkle;
+  double m_twinkle_rendering = m_twinkle;
+  void update_twinkle_rendering() {
+    if (setting_twinkle_enabled)
+      m_twinkle_rendering = m_twinkle;
+    else
+      m_twinkle_rendering = 0.0;
+  }
+  void set_twinkle(double value) {
+    this->m_twinkle = value;
+  }
 
 private:
   std::vector<byte> color_table;
@@ -635,21 +652,21 @@ private:
         tcell.c = lcell->c;
 
         // current_power = 現在の輝度 (瞬き)
-        if (twinkle != 0.0) {
-          current_power -= std::hypot(current_power * twinkle, 0.1) * util::randf();
+        if (m_twinkle_rendering != 0.0) {
+          current_power -= std::hypot(current_power * m_twinkle_rendering, 0.1) * util::randf();
           if (current_power < 0.0) current_power = 0.0;
         }
 
         // level = 色番号
         double const fractional_level = util::interpolate(current_power, 0.6, color_table.size());
         int level = fractional_level;
-        if (twinkle != 0.0 && util::randf() > fractional_level - level) level++;
+        if (m_twinkle_rendering != 0.0 && util::randf() > fractional_level - level) level++;
         level = std::min<int>(level, color_table.size() - 1);
 
         tcell.fg = color_table[level];
         tcell.bold = !(lcell->flags & cflag_disable_bold) && lcell->stage > 0.5;
 
-        if (!setting_diffuse) continue;
+        if (!setting_diffuse_enabled) continue;
 
         double const twinkle_power = (double) level / (color_table.size() - 1);
         double const p0 = ((1.0 / 0.3) * (twinkle_power - 0.0));
@@ -668,7 +685,7 @@ private:
       }
     }
 
-    if (setting_diffuse)
+    if (setting_diffuse_enabled)
       resolve_diffuse();
   }
 
@@ -1256,7 +1273,7 @@ private:
 
 public:
   void s5mandel() {
-    twinkle = 0.1;
+    set_twinkle(0.1);
 
     double const scale0 = 1e-17, scaleN = 30.0 / std::min(cols, rows);
     std::uint32_t const nloop = 3000;
@@ -1281,7 +1298,7 @@ public:
       if (is_menu) return;
     }
 
-    twinkle = default_twinkle;
+    set_twinkle(default_twinkle);
   }
 
 private:
@@ -1422,8 +1439,8 @@ public:
       "\n"
       //------------------------------------------------------------------------------
       "OPTIONS\n"
-      "   --help      Show help\n"
-      "   --          The rest arguments are processed as MESSAGE\n"
+      "   --help      Show help.\n"
+      "   --          The rest arguments are processed as MESSAGE.\n"
       "   -m, --message=MESSAGE\n"
       "               Add a message for 'banner' scene.\n"
       "   -s, --scene=SCENE\n"
@@ -1441,7 +1458,10 @@ public:
       "               non-negative number.  The default is 1.0.\n"
       "   --diffuse\n"
       "   --no-diffuse\n"
-      "               Turn on/off the background-color effect.\n"
+      "               Turn on/off the background-color effect.  Turned on by default.\n"
+      "   --twinkle\n"
+      "   --no-twinkle\n"
+      "               Turn on/off the twinkling effect.  Turned on by default.\n"
       "   --rain-density=NUM\n"
       "               Set the factor for the density of rain drops.  A positive\n"
       "               number.  The default is 1.0.\n"
@@ -1583,7 +1603,8 @@ private:
   }
 
 public:
-  bool flag_diffuse = true;
+  bool flag_diffuse_enabled = true;
+  bool flag_twinkle_enabled = true;
   double frame_rate = 25;
   double error_rate = 1.0;
   double rain_density = 1.0;
@@ -1641,9 +1662,13 @@ public:
           } else if (is_longopt("help")) {
             flag_help = true;
           } else if (is_longopt("diffuse")) {
-            flag_diffuse = true;
+            flag_diffuse_enabled = true;
           } else if (is_longopt("no-diffuse")) {
-            flag_diffuse = false;
+            flag_diffuse_enabled = false;
+          } else if (is_longopt("twinkle")) {
+            flag_twinkle_enabled = true;
+          } else if (is_longopt("no-twinkle")) {
+            flag_twinkle_enabled = false;
           } else if (is_longopt("message")) {
             push_message(get_longoptarg());
           } else if (is_longopt("scene")) {
@@ -1719,7 +1744,8 @@ int main(int argc, char** argv) {
   buff.initialize_color_table(args.color);
   buff.set_frame_rate(args.frame_rate);
   buff.set_error_rate(args.error_rate);
-  buff.set_diffuse(args.flag_diffuse);
+  buff.set_diffuse_enabled(args.flag_diffuse_enabled);
+  buff.set_twinkle_enabled(args.flag_twinkle_enabled);
   buff.set_rain_density(args.rain_density);
 
   std::signal(SIGINT, trapint);

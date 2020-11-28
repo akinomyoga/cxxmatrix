@@ -84,7 +84,10 @@ OPTIONS
                non-negative number.  The default is 1.0.
    --diffuse
    --no-diffuse
-               Turns on/off the background-color effect.
+               Turn on/off the background-color effect.  Turned on by default.
+   --twinkle
+   --no-twinkle
+               Turn on/off the twinkling effect.  Turned on by default.
    --rain-density=NUM
                Set the factor for the density of rain drops.  A positive
                number.  The default is 1.0.
