@@ -57,10 +57,9 @@ struct tcell_t {
   double diffuse = 0;
 };
 
-enum cell_flags
-  {
-   cflag_disable_bold = 0x1,
-  };
+enum cell_flags {
+  cflag_disable_bold = 0x1,
+};
 
 struct cell_t {
   char32_t c = U' ';
@@ -308,14 +307,14 @@ private:
   std::FILE* file;
 
 private:
-  bool flag_sigwinch = false;
+  bool flag_resize = false;
 public:
-  void set_sigwinch() {
-    flag_sigwinch = true;
+  void notify_resize() {
+    flag_resize = true;
   }
   void process_signals() {
-    if (flag_sigwinch) {
-      flag_sigwinch = false;
+    if (flag_resize) {
+      flag_resize = false;
       initialize();
       redraw();
     }
@@ -715,6 +714,7 @@ public:
   void term_leave() {
     if (!term_internal) return;
     term_internal = false;
+    std::fprintf(file, "\x18"); // CAN
     std::fprintf(file, "\x1b[m\x1b[%dH\n", rows);
     std::fprintf(file, "\x1b[?1049l\x1b[?25h");
     std::fflush(file);
@@ -1414,7 +1414,7 @@ void trapint(int sig) {
   std::exit(128 + sig);
 }
 void trapwinch(int) {
-  buff.set_sigwinch();
+  buff.notify_resize();
 }
 void traptstp(int sig) {
   buff.term_leave();
@@ -1423,6 +1423,7 @@ void traptstp(int sig) {
 }
 void trapcont(int) {
   buff.term_enter();
+  buff.notify_resize();
   std::signal(SIGTSTP, traptstp);
 }
 
