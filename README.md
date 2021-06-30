@@ -133,7 +133,7 @@ make PREFIX=~/.local install
 ### See also
 
 - AUR Package: [AUR (en) - cxxmatrix-git](https://aur.archlinux.org/packages/cxxmatrix-git/) by @ignapk
-- FreeBSD Package: [misc/cxxmatrix](https://www.freshports.org/misc/cxxmatrix)
+- FreeBSD Package: [misc/cxxmatrix](https://www.freshports.org/misc/cxxmatrix) by @nunotexbsd (`Nuno Teixeira <eduardo@FreeBSD.org>`)
 
 # Similar programs
 
