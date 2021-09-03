@@ -31,8 +31,16 @@ CXXFLAGS := -std=c++17 -Wall -Wextra -Ofast
 
 all: cxxmatrix
 
+cxxmatrix-OBJS := cxxmatrix.o
+ifeq ($(TARGET),win32)
+  cxxmatrix-OBJS += term_win32.o
+  CXXFLAGS += -static -static-libgcc -static-libstdc++
+else
+  cxxmatrix-OBJS += term_unix.o
+endif
+
 -include $(wildcard *.dep)
-cxxmatrix: cxxmatrix.o
+cxxmatrix: $(cxxmatrix-OBJS)
 	$(CXX) $(CXXFLAGS) -o $@ $^
 
 cxxmatrix.o: cxxmatrix.cpp glyph.inl

@@ -8,11 +8,6 @@
 #include <cmath>
 #include <cctype>
 
-#include <unistd.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <poll.h>
-
 #include <vector>
 #include <algorithm>
 #include <iterator>
@@ -24,6 +19,29 @@
 #include "cxxmatrix.hpp"
 #include "mandel.hpp"
 #include "conway.hpp"
+
+namespace cxxmatrix {
+  // term_*.cpp
+  void term_init();
+  bool term_get_size(int& cols, int&rows);
+  void term_enter();
+  void term_leave();
+  std::ptrdiff_t term_read(byte* buffer, std::size_t size);
+
+  bool term_winsize_from_env(int& cols, int& rows) {
+    int int_cols = -1, int_rows = -1;
+    if (const char* const env_cols = std::getenv("COLUMNS"))
+      int_cols = std::atoi(env_cols);
+    if (const char* const env_rows = std::getenv("LINES"))
+      int_rows = std::atoi(env_rows);
+    if (int_cols > 0 && int_rows > 0) {
+      cols = int_cols;
+      rows = int_rows;
+      return true;
+    } else
+      return false;
+  }
+}
 
 namespace cxxmatrix::config {
   constexpr std::chrono::milliseconds default_frame_interval {40};
@@ -179,7 +197,6 @@ inline constexpr key_t key_ctrl(key_t k) { return k & 0x1F; }
 
 struct key_reader {
   bool term_internal = false;
-  struct termios term_termios_save;
   bool term_nonblock_save = false;
 
   std::function<void(key_t)> proc;
@@ -188,22 +205,12 @@ public:
   void leave() {
     if (!term_internal) return;
     term_internal = false;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &this->term_termios_save);
+    term_leave();
   }
   void enter() {
     if (term_internal) return;
     term_internal = true;
-
-    tcgetattr(STDIN_FILENO, &this->term_termios_save);
-    struct termios termios = this->term_termios_save;
-    termios.c_lflag &= ~(ECHO | ICANON | IEXTEN); // シグナルは使うので ISIG は消さない
-    termios.c_iflag &= ~(BRKINT | ICRNL | INPCK | ISTRIP | IXON);
-    termios.c_cflag &= ~(CSIZE | PARENB);
-    termios.c_cflag |= CS8;
-    termios.c_oflag &= ~(OPOST);
-    termios.c_cc[VMIN]  = 1;
-    termios.c_cc[VTIME] = 0;
-    tcsetattr(STDIN_FILENO, TCSAFLUSH, &termios);
+    term_enter();
   }
 
 private:
@@ -237,20 +244,11 @@ private:
       process_key(b);
     }
   }
-  static ssize_t nonblock_read(int fd, byte* buffer, ssize_t size) {
-    struct pollfd pollfd;
-    pollfd.fd = fd;
-    pollfd.events = POLLIN | POLLERR;
-    poll(&pollfd, 1, 0);
-    if (pollfd.revents & POLLIN)
-      return read(fd, buffer, size);
-    return 0;
-  }
 public:
   void process() {
     byte buffer[1024];
     ssize_t nread;
-    while ((nread = nonblock_read(STDIN_FILENO, buffer, 1024)) > 0) {
+    while ((nread = term_read(buffer, 1024)) > 0) {
       for (ssize_t i = 0; i < nread; i++)
         process_byte(buffer[i]);
     }
@@ -302,20 +300,26 @@ public:
   }
 
 private:
-  int cols, rows;
+  int cols = 80, rows = 25;
   std::vector<tcell_t> old_content;
   std::vector<tcell_t> new_content;
   std::FILE* file;
 
 private:
-  bool flag_resize = false;
+  bool flag_sigint = false;
+  bool flag_winch = false;
 public:
-  void notify_resize() {
-    flag_resize = true;
-  }
+  void notify_sigint() { flag_sigint = true; }
+  void notify_winch() { flag_winch = true; }
   void process_signals() {
-    if (flag_resize) {
-      flag_resize = false;
+    if (flag_sigint) {
+      this->finalize();
+      std::signal(SIGINT, SIG_DFL);
+      std::raise(SIGINT);
+      std::exit(128 + SIGINT);
+    }
+    if (flag_winch) {
+      flag_winch = false;
       initialize();
       redraw();
     }
@@ -747,10 +751,7 @@ public:
 
   void initialize() {
     kreader.proc = [this] (key_t k) { this->process_key(k); };
-    struct winsize ws;
-    ioctl(STDIN_FILENO, TIOCGWINSZ, (char*) &ws);
-    cols = ws.ws_col;
-    rows = ws.ws_row;
+    term_get_size(this->cols, this->rows);
     file = stdout;
     new_content.clear();
     new_content.resize(cols * rows);
@@ -760,7 +761,7 @@ public:
   }
 
   void finalize() {
-    term_leave();
+    this->term_leave();
   }
 
 
@@ -1412,15 +1413,14 @@ public:
 
 buffer buff;
 
-void trapint(int sig) {
-  buff.finalize();
-  std::signal(sig, SIG_DFL);
-  std::raise(sig);
-  std::exit(128 + sig);
+void trapint(int) {
+  buff.notify_sigint();
 }
 void trapwinch(int) {
-  buff.notify_resize();
+  buff.notify_winch();
 }
+
+#ifdef SIGTSTP
 void traptstp(int sig) {
   buff.term_leave();
   std::signal(sig, SIG_DFL);
@@ -1428,9 +1428,10 @@ void traptstp(int sig) {
 }
 void trapcont(int) {
   buff.term_enter();
-  buff.notify_resize();
+  buff.notify_winch();
   std::signal(SIGTSTP, traptstp);
 }
+#endif
 
 } /* end of namespace cxxmatrix */
 
@@ -1484,7 +1485,9 @@ public:
       "\n"
       "Keyboard\n"
       "   C-c (SIGINT)  Quit\n"
+#ifdef SIGTSTP
       "   C-z (SIGTSTP) Suspend\n"
+#endif
       "   C-m, RET      Show menu\n"
       "\n"
     );
@@ -1771,9 +1774,7 @@ int main(int argc, char** argv) {
   buff.set_rain_density(args.rain_density);
 
   std::signal(SIGINT, trapint);
-  std::signal(SIGWINCH, trapwinch);
-  std::signal(SIGTSTP, traptstp);
-  std::signal(SIGCONT, trapcont);
+  term_init();
 
   buff.initialize();
   buff.term_enter();

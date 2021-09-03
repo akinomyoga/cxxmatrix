@@ -7,6 +7,11 @@
 
 namespace cxxmatrix {
   typedef uint8_t byte;
+
+  bool term_winsize_from_env(int& cols, int& rows);
+  void trapwinch(int sig);
+  void traptstp(int sig);
+  void trapcont(int sig);
 }
 
 namespace cxxmatrix::util {
