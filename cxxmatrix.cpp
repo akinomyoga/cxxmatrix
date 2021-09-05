@@ -15,6 +15,7 @@
 #include <chrono>
 #include <thread>
 #include <functional>
+#include <unistd.h>
 
 #include "cxxmatrix.hpp"
 #include "mandel.hpp"
@@ -737,6 +738,20 @@ public:
 
   bool is_menu = false;
   void process_key(key_t k) {
+    switch (k) {
+    case 'q':
+    case 'Q':
+    case key_ctrl('c'):
+      this->finalize();
+      std::exit(0);
+      return;
+#ifdef SIGTSTP
+    case key_ctrl('z'):
+      traptstp(SIGTSTP);
+      return;
+#endif
+    }
+
     if (is_menu) {
       menu_process_key(k);
     } else {
@@ -1484,11 +1499,11 @@ public:
       "               number.  The default is 1.0.\n"
       "\n"
       "Keyboard\n"
-      "   C-c (SIGINT)  Quit\n"
+      "   C-c (SIGINT), q, Q  Quit\n"
 #ifdef SIGTSTP
-      "   C-z (SIGTSTP) Suspend\n"
+      "   C-z (SIGTSTP)       Suspend\n"
 #endif
-      "   C-m, RET      Show menu\n"
+      "   C-m, RET            Show menu\n"
       "\n"
     );
   }
