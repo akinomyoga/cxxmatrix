@@ -121,7 +121,7 @@ namespace cxxmatrix {
       print_error_message("SetConsoleOutputCP (restore)");
   }
 
-  std::ptrdiff_t conpty_read(byte* buffer, std::size_t size) {
+  static std::ptrdiff_t conpty_read(byte* buffer, std::size_t size) {
     DWORD dwNumberOfEvents;
     if (GetNumberOfConsoleInputEvents(conpty_hStdOutput, &dwNumberOfEvents) == 0) {
       print_error_message("GetNumberOfConsoleInputEvents (broken console)");
@@ -256,15 +256,15 @@ namespace cxxmatrix {
       return false;
   }
 
-  bool stty_init(HANDLE hIn) {
+  static bool stty_init(HANDLE hIn) {
     stty_hStdInput = hIn;
     stty_enabled = stty_update_winsize(default_cols, default_rows);
     return stty_enabled;
   }
-  void stty_enter() { std::system("stty.exe raw isig"); }
-  void stty_leave() { std::system("stty.exe sane"); }
+  static void stty_enter() { std::system("stty.exe raw isig"); }
+  static void stty_leave() { std::system("stty.exe sane"); }
 
-  std::ptrdiff_t stty_read(byte* buffer, std::size_t size) {
+  static std::ptrdiff_t stty_read(byte* buffer, std::size_t size) {
     DWORD read_size = 0;
     if (PeekNamedPipe(stty_hStdInput, NULL, 0, NULL, &read_size, NULL) && read_size > 0) {
       if (read_size > size) read_size = size;
