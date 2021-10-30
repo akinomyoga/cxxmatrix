@@ -200,12 +200,12 @@ Related tags in GitHub
 - [b166erbot/matrix](https://github.com/b166erbot/matrix) in Python3 ![Stars](https://img.shields.io/github/stars/b166erbot/matrix?style=social)
 - [meganehouser/rustmatrix](https://github.com/meganehouser/rustmatrix) - [Demo](https://github.com/meganehouser/rustmatrix#rustmatrix) in Rust ![Stars](https://img.shields.io/github/stars/meganehouser/rustmatrix?style=social)
 - [txstc55/matrix_viewer](https://github.com/txstc55/matrix_viewer) - [Demo](https://github.com/txstc55/matrix_viewer#matrix-viewer) in C++ ![Stars](https://img.shields.io/github/stars/txstc55/matrix_viewer?style=social)
-- [aguegu/greenrain](https://github.com/aguegu/greenrain) - [Demo](https://github.com/aguegu/greenrain#greenrain) in C++ ![Stars](https://img.shields.io/github/staraguegu/greenrain?style=social)
-- [JaydenL33/cmatrix2.0](https://github.com/JaydenL33/cmatrix2.0) in C ![Stars](https://img.shields.io/github/star/github.com/JaydenL33/cmatrix2.0?style=social)
-- [stefrush/enterthematrix](https://github.com/stefrush/enterthematrix) - [Demo](https://github.com/stefrush/enterthematrix#enterthematrix) in Python ![Stars](https://img.shields.io/github/starstefrush/enterthematrix?style=social)
-- [Shizcow/smatrix](https://github.com/Shizcow/smatrix) in Rust ![Stars](https://img.shields.io/github/starShizcow/smatrix?style=social)
-- [gurushida/matrixmirror](https://github.com/gurushida/matrixmirror) - [Demo](https://github.com/gurushida/matrixmirror#matrixmirror) in Objective-C ![Stars](https://img.shields.io/github/stargurushida/matrixmirror?style=social)
-- [roee30/rmatrix](https://github.com/roee30/rmatrix) in Rust ![Stars](https://img.shields.io/github/starroee30/rmatrix?style=social)
+- [aguegu/greenrain](https://github.com/aguegu/greenrain) - [Demo](https://github.com/aguegu/greenrain#greenrain) in C++ ![Stars](https://img.shields.io/github/stars/aguegu/greenrain?style=social)
+- [JaydenL33/cmatrix2.0](https://github.com/JaydenL33/cmatrix2.0) in C ![Stars](https://img.shields.io/github/stars/JaydenL33/cmatrix2.0?style=social)
+- [stefrush/enterthematrix](https://github.com/stefrush/enterthematrix) - [Demo](https://github.com/stefrush/enterthematrix#enterthematrix) in Python ![Stars](https://img.shields.io/github/stars/stefrush/enterthematrix?style=social)
+- [Shizcow/smatrix](https://github.com/Shizcow/smatrix) in Rust ![Stars](https://img.shields.io/github/stars/Shizcow/smatrix?style=social)
+- [gurushida/matrixmirror](https://github.com/gurushida/matrixmirror) - [Demo](https://github.com/gurushida/matrixmirror#matrixmirror) in Objective-C ![Stars](https://img.shields.io/github/stars/gurushida/matrixmirror?style=social)
+- [roee30/rmatrix](https://github.com/roee30/rmatrix) in Rust ![Stars](https://img.shields.io/github/stars/roee30/rmatrix?style=social)
 
 ## The Matrix rains in browsers
 
