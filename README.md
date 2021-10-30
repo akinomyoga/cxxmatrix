@@ -185,7 +185,7 @@ Related tags in GitHub
 ## The Matrix rains in terminals
 
 - [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C ![Stars](https://img.shields.io/github/stars/abishekvashok/cmatrix?style=social)
-- [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 [Stars](https://img.shields.io/github/stars/will8211/unimatrix?style=social)
+- [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 ![Stars](https://img.shields.io/github/stars/will8211/unimatrix?style=social)
 - akinomyoga/cxxmatrix [HN](https://news.ycombinator.com/item?id=22510839) in C++ ![Stars](https://img.shields.io/github/stars/akinomyoga/cxxmatrix?style=social)
 - [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node ![Stars](https://img.shields.io/github/stars/nojvek/matrix-rain?style=social)
 - [M4444/TMatrix](https://github.com/M4444/TMatrix) - [Demo](https://github.com/M4444/TMatrix#how-it-looks), [Reddit](https://www.reddit.com/r/unixporn/comments/btg6rj/oc_tmatrix_a_new_terminal_digital_rain_simulator/) in C++ ![Stars](https://img.shields.io/github/stars/M4444/TMatrix?style=social)
