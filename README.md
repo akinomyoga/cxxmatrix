@@ -209,9 +209,9 @@ Related tags in GitHub
 
 ## The Matrix rains in browsers
 
-- [tidwall/digitalrain](https://github.com/tidwall/digitalrain) - [Demo](https://tidwall.com/digitalrain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/33tidwall/digitalrain?style=social)
-- [emilyxxie/green_rain](https://github.com/emilyxxie/green_rain) - [Demo](http://xie-emily.com/generative_art/green_rain.html) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/22emilyxxie/green_rain?style=social)
-- [winterbe/github-matrix](https://github.com/winterbe/github-matrix) - [Demo](https://winterbe.com/projects/github-matrix/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/11winterbe/github-matrix?style=social)
+- [tidwall/digitalrain](https://github.com/tidwall/digitalrain) - [Demo](https://tidwall.com/digitalrain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/tidwall/digitalrain?style=social)
+- [emilyxxie/green_rain](https://github.com/emilyxxie/green_rain) - [Demo](http://xie-emily.com/generative_art/green_rain.html) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/emilyxxie/green_rain?style=social)
+- [winterbe/github-matrix](https://github.com/winterbe/github-matrix) - [Demo](https://winterbe.com/projects/github-matrix/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/winterbe/github-matrix?style=social)
 - [Rezmason/matrix](https://github.com/Rezmason/matrix) - [Demo](https://rezmason.github.io/matrix/), [HN](https://news.ycombinator.com/item?id=28446761) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/11Rezmason/matrix?style=social)
 - [neilcarpenter/Matrix-code-rain](https://github.com/neilcarpenter/Matrix-code-rain) - [Demo](http://neilcarpenter.com/demos/canvas/matrix/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/neilcarpenter/Matrix-code-rain?style=social)
 - [syropian/HTML5-Matrix-Code-Rain](https://github.com/syropian/HTML5-Matrix-Code-Rain) - [Demo](https://codepen.io/syropian/pen/bLzAi) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/syropian/HTML5-Matrix-Code-Rain?style=social)
@@ -219,20 +219,20 @@ Related tags in GitHub
 - [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR ![Stars](https://img.shields.io/github/stars/pazdera/matrix-vr?style=social)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/lhartikk/BtcTxMatrix?style=social)
 - [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) in HTML5 Canvas ![Stars](https://img.shields.io/github/staranderspitman/redpill?style=social)
-- [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/starpmutua/Matrix-Rain?style=social)
-- [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/starzhaihaoran/digital-rain?style=social)
-- [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas ![Stars](https://img.shields.io/github/starWorkvictor/pixi-digital-rain?style=social)
-- [azder/ES2017-Matrix-Rain](https://github.com/azder/ES2017-Matrix-Rain) - [Demo](https://azder.github.io/ES2017-Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/starazder/ES2017-Matrix-Rain?style=social)
-- [codingotaku/7-Segment-Digital-Matrix-Rain](https://github.com/codingotaku/7-Segment-Digital-Matrix-Rain) - [Demo](https://codingotaku.com/7-Segment-Digital-Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/starcodingotaku/7-Segment-Digital-Matrix-Rain?style=social)
+- [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/pmutua/Matrix-Rain?style=social)
+- [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/zhaihaoran/digital-rain?style=social)
+- [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/Workvictor/pixi-digital-rain?style=social)
+- [azder/ES2017-Matrix-Rain](https://github.com/azder/ES2017-Matrix-Rain) - [Demo](https://azder.github.io/ES2017-Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/azder/ES2017-Matrix-Rain?style=social)
+- [codingotaku/7-Segment-Digital-Matrix-Rain](https://github.com/codingotaku/7-Segment-Digital-Matrix-Rain) - [Demo](https://codingotaku.com/7-Segment-Digital-Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/codingotaku/7-Segment-Digital-Matrix-Rain?style=social)
 
 ## Others
 
-- [winterbe/github-matrix-screensaver](https://github.com/winterbe/github-matrix-screensaver) (github-matrix/WebSaver?) in JavaScript ![Stars](https://img.shields.io/github/stars/44winterbe/github-matrix-screensaver?style=social)
+- [winterbe/github-matrix-screensaver](https://github.com/winterbe/github-matrix-screensaver) (github-matrix/WebSaver?) in JavaScript ![Stars](https://img.shields.io/github/stars/winterbe/github-matrix-screensaver?style=social)
 - [tremby/Kaleidoscope-LEDEffect-DigitalRain](https://github.com/tremby/Kaleidoscope-LEDEffect-DigitalRain) in Kaleidoscope? ![Stars](https://img.shields.io/github/stars/tremby/Kaleidoscope-LEDEffect-DigitalRain?style=social)
 - [nathanchere/MatrixSaver](https://github.com/nathanchere/MatrixSaver) in C# ![Stars](https://img.shields.io/github/stars/nathanchere/MatrixSaver?style=social)
 - [sapandang/Matrix-Rain-Live-Wallpaper](https://github.com/sapandang/Matrix-Rain-Live-Wallpaper) in Android Wallpaper ![Stars](https://img.shields.io/github/stars/sapandang/Matrix-Rain-Live-Wallpaper?style=social)
-- [Sullivan008/CSharp-MatrixRain](https://github.com/Sullivan008/CSharp-MatrixRain) in C# ![Stars](https://img.shields.io/github/starSullivan008/CSharp-MatrixRain?style=social)
-- [artgl42/MatrixDigitalRain](https://github.com/artgl42/MatrixDigitalRain) - [Demo](https://github.com/artgl42/MatrixDigitalRain#matrixdigitalrain-dll) in C# ![Stars](https://img.shields.io/github/starartgl42/MatrixDigitalRain?style=social)
+- [Sullivan008/CSharp-MatrixRain](https://github.com/Sullivan008/CSharp-MatrixRain) in C# ![Stars](https://img.shields.io/github/stars/Sullivan008/CSharp-MatrixRain?style=social)
+- [artgl42/MatrixDigitalRain](https://github.com/artgl42/MatrixDigitalRain) - [Demo](https://github.com/artgl42/MatrixDigitalRain#matrixdigitalrain-dll) in C# ![Stars](https://img.shields.io/github/stars/artgl42/MatrixDigitalRain?style=social)
 
 ## Videos
 
