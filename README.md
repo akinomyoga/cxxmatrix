@@ -218,7 +218,7 @@ Related tags in GitHub
 - [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 ![Stars](https://img.shields.io/github/stars/raphaklaus/matrix-fx?style=social)
 - [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR ![Stars](https://img.shields.io/github/stars/pazdera/matrix-vr?style=social)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/lhartikk/BtcTxMatrix?style=social)
-- [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) in HTML5 Canvas ![Stars](https://img.shields.io/github/staranderspitman/redpill?style=social)
+- [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/anderspitman/redpill?style=social)
 - [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/pmutua/Matrix-Rain?style=social)
 - [zhaihaoran/digital-rain](https://github.com/zhaihaoran/digital-rain) - [Demo](https://zhaihaoran.github.io/digital-rain/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/zhaihaoran/digital-rain?style=social)
 - [Workvictor/pixi-digital-rain](https://github.com/Workvictor/pixi-digital-rain) - [Demo](https://victorpunko.ru/development/digital-rain-v3/) in HTML5 Canvas ![Stars](https://img.shields.io/github/stars/Workvictor/pixi-digital-rain?style=social)
