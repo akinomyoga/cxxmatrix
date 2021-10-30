@@ -184,7 +184,7 @@ Related tags in GitHub
 
 ## The Matrix rains in terminals
 
-- [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C [](https://img.shields.io/github/stars/abishekvashok/cmatrix?style=social)
+- [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C ![Stars](https://img.shields.io/github/stars/abishekvashok/cmatrix?style=social)
 - [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1303)
 - akinomyoga/cxxmatrix [HN](https://news.ycombinator.com/item?id=22510839) in C++ (541)
 - [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node (269)
