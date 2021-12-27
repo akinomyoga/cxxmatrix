@@ -38,7 +38,12 @@ Comma separated list of '\fInumber\fR', '\fIbanner\fR', '\fIrain\fR', '\fIconway
 .B \-c, \-\-color=\fICOLOR
 Set color.
 One of '\fIdefault\fR', '\fIblack\fR', '\fIred\fR', '\fIgreen\fR', '\fIyellow\fR', '\fIblue\fR', '\fImagenta\fR', '\fIcyan\fR', '\fIwhite\fR',
-and integer \fI0\fR\-\fI255\fR (256 index color).
+integer \fI0\fR\-\fI255\fR (256 index color), '\fI#RGB\fR', and '\fI#RRGGBB\fR'.
+
+.TP
+.B \-\-colorspace=\fICOLORSPACE
+Set colorspace.
+One of '\fIdefault\fR'/'\fIxterm-256\fR'/'\fI256\fR', '\fIansi-8\fR'/'\fI8\fR', '\fIaix-16\fR'/'\fI16\fR', '\fIxterm-88\fR'/'\fI88\fR', '\fIxterm-rgb\fR', '\fIiso-rgb\fR'/'\fIrgb\fR', '\fIiso-cmy\fR'/'\fIcmy\fR', '\fIiso-cmyk\fR'/'\fIcmyk\fR', or '\fIiso-index\fR'/'\fIindex\fR'.
 
 .TP
 .B \-\-frame\-rate=\fINUM
@@ -97,7 +102,7 @@ Show menu
 Written by Koichi Murase @akinomyoga <https://github.com/akinomyoga>.
 
 .SS COPYRIGHT
-Copyright (C) 2020 Koichi Murase @akinomyoga <myoga.murae@gmail.com>.
+Copyright (C) 2020 Koichi Murase @akinomyoga <myoga.murase@gmail.com>.
 
 .SS LICENSE
 The source code is provided with the MIT license.

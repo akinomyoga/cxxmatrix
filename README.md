@@ -102,8 +102,13 @@ OPTIONS
                'conway', 'mandelbrot', 'rain-forever' and 'loop'.
    -c, --color=COLOR
                Set color. One of 'default', 'black', 'red', 'green', 'yellow',
-               'blue', 'magenta', 'cyan', 'white', and integer 0-255 (256 index
-               color).
+               'blue', 'magenta', 'cyan', 'white', integer 0-255 (256 index
+               color), '#RGB', and '#RRGGBB'.
+   --colorspace=COLORSPACE
+               Set colorspace. One of 'default'/'xterm-256'/'256',
+               'ansi-8'/'8', 'aix-16'/'16', 'xterm-88'/'88', 'xterm-rgb',
+               'iso-rgb'/'rgb', 'iso-cmy'/'cmy', 'iso-cmyk'/'cmyk', or
+               'iso-index'/'index'.
    --frame-rate=NUM
                Set the frame rate per second.  A positive number less than or
                equal to 1000. The default is 25.
@@ -152,9 +157,9 @@ The default install prefix is `/usr/local`. The following files will be created:
 - `/usr/local/share/man/man1/cxxmatrix.1.gz`
 - `/usr/local/share/licenses/cxxmatrix/LICENSE.md`
 
-`PREFIX` can be specified to change the install prefix.
-To copy files in a temporary location, `DESTDIR` can also be specified.
-To change the subdirectory of `LICENSE.md`, `INSTALL_SUBDIR_LICENSE` (whose detault value is `share/licenses/cxxmatrix`) can be adjusted.
+The make variable `PREFIX` can be specified to change the install prefix.
+To copy files in a temporary location, the make variable `DESTDIR` can also be specified.
+To change the subdirectory of `LICENSE.md`, the make variable `INSTALL_SUBDIR_LICENSE` (whose detault value is `share/licenses/cxxmatrix`) can be adjusted.
 
 ```bash
 # Example 1: install cxxmatrix in user directory
@@ -175,33 +180,40 @@ sudo make install INSTALL_SUBDIR_LICENSE=share/cxxmatrix
 - AUR Package: [AUR (en) - cxxmatrix-git](https://aur.archlinux.org/packages/cxxmatrix-git/) by @ignapk
 - FreeBSD Package: [misc/cxxmatrix](https://www.freshports.org/misc/cxxmatrix) by @nunotexbsd (`Nuno Teixeira <eduardo@FreeBSD.org>`)
 
-# Similar programs
+# Similar projects
 
-Related tags in GitHub
+Related tags in GitHub:
 
 - [`#matrix-rain`](https://github.com/topics/matrix-rain)
 - [`#matrix-digital-rain`](https://github.com/topics/matrix-digital-rain)
 
+In each section, the projects are ordereded by the number of stars, which is shown in parentheses for each project.
+This list including the numbers of stars is updated when `cxxmatrix` is updated so does not reflect the current status.
+The numbers of stars are last updated on 2021-12-27 10:05:04 JST.
+
 ## The Matrix rains in terminals
 
-- [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C (2220)
-- [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1303)
-- akinomyoga/cxxmatrix [HN](https://news.ycombinator.com/item?id=22510839) in C++ (541)
-- [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node (269)
-- [M4444/TMatrix](https://github.com/M4444/TMatrix) - [Demo](https://github.com/M4444/TMatrix#how-it-looks), [Reddit](https://www.reddit.com/r/unixporn/comments/btg6rj/oc_tmatrix_a_new_terminal_digital_rain_simulator/) in C++ (246)
-- [GeertJohan/gomatrix](https://github.com/GeertJohan/gomatrix) - [Youtube](https://www.youtube.com/watch?v=mUXFxSmZMis) in Go (232)
-- [cowboy8625/rusty-rain](https://github.com/cowboy8625/rusty-rain) - [Demo](https://github.com/cowboy8625/rusty-rain#----------rusty-rain----), [Reddit](https://www.reddit.com/r/rust/comments/llauze/cross_platform_matrix_rain/) in Rust (75)
-- [levithomason/cmatrix](https://github.com/levithomason/cmatrix) - [Demo](https://github.com/levithomason/cmatrix#cmatrix) in C (66)
+- [abishekvashok/cmatrix](https://github.com/abishekvashok/cmatrix) - [Demo](https://github.com/abishekvashok/cmatrix#screencasts) in C (2380)
+- [will8211/unimatrix](https://github.com/will8211/unimatrix) - [Demo](https://github.com/will8211/unimatrix#screenshots) in Python3 (1346)
+- akinomyoga/cxxmatrix - [HN](https://news.ycombinator.com/item?id=22510839) in C++ (551)
+- [nojvek/matrix-rain](https://github.com/nojvek/matrix-rain) - [Demo](https://github.com/nojvek/matrix-rain#screenshots) in Node (391)
+- [st3w/neo](https://github.com/st3w/neo) - [Demo](https://github.com/st3w/neo#neo), [Reddit 1](https://www.reddit.com/r/unixporn/comments/rh45qv/oc_recreate_the_digital_rain_from_the_matrix_in/) [2](https://www.reddit.com/r/linux/comments/rhwqu5/wake_up_neo/) [3](https://www.reddit.com/r/SideProject/comments/rgnq0m/neo_recreate_the_digital_rain_from_the_matrix_in/) [4](https://www.reddit.com/r/terminal_porn/comments/rgoj5f/neo_recreate_the_digital_rain_from_the_matrix_in/) in C++ (266)
+- [M4444/TMatrix](https://github.com/M4444/TMatrix) - [Demo](https://github.com/M4444/TMatrix#how-it-looks), [Reddit](https://www.reddit.com/r/unixporn/comments/btg6rj/oc_tmatrix_a_new_terminal_digital_rain_simulator/) in C++ (265)
+- [GeertJohan/gomatrix](https://github.com/GeertJohan/gomatrix) - [Youtube](https://www.youtube.com/watch?v=mUXFxSmZMis) in Go (234)
+- [cowboy8625/rusty-rain](https://github.com/cowboy8625/rusty-rain) - [Demo](https://github.com/cowboy8625/rusty-rain#----------rusty-rain----), [Reddit](https://www.reddit.com/r/rust/comments/llauze/cross_platform_matrix_rain/) in Rust (90)
+- [levithomason/cmatrix](https://github.com/levithomason/cmatrix) - [Demo](https://github.com/levithomason/cmatrix#cmatrix) in C (68)
 - [torch2424/wasm-matrix](https://github.com/torch2424/wasm-matrix) - [Demo](https://github.com/torch2424/wasm-matrix#wasm-matrix) in WASM (61)
-- [jsbueno/terminal_matrix](https://github.com/jsbueno/terminal_matrix) - [Demo](https://github.com/jsbueno/terminal_matrix#python-script-to-simulate-the-matrix-screensaver-effect-in-a-posix-terminal) in Python (41)
-- [joechrisellis/pmatrix](https://github.com/joechrisellis/pmatrix) - [Demo](https://github.com/joechrisellis/pmatrix#pmatrix-in-action) in Python (33)
-- [domsson/fakesteak](https://github.com/domsson/fakesteak) - [Demo](https://github.com/domsson/fakesteak#fakesteak), [Reddit](https://www.reddit.com/r/unixporn/comments/ju62xa/oc_fakesteak_yet_another_matrix_rain_generator/) in C (30)
-- [amstrad/oh-my-matrix](https://github.com/amstrad/oh-my-matrix) - [Demo](https://github.com/amstrad/oh-my-matrix/blob/master/oh-my-matrix.gif) in Python (18)
-- [b166erbot/matrix](https://github.com/b166erbot/matrix) in Python3 (17)
-- [meganehouser/rustmatrix](https://github.com/meganehouser/rustmatrix) - [Demo](https://github.com/meganehouser/rustmatrix#rustmatrix) in Rust (16)
+- [jsbueno/terminal_matrix](https://github.com/jsbueno/terminal_matrix) - [Demo](https://github.com/jsbueno/terminal_matrix#python-script-to-simulate-the-matrix-screensaver-effect-in-a-posix-terminal) in Python (46)
+- [joechrisellis/pmatrix](https://github.com/joechrisellis/pmatrix) - [Demo](https://github.com/joechrisellis/pmatrix#pmatrix-in-action) in Python (34)
+- [domsson/fakesteak](https://github.com/domsson/fakesteak) - [Demo](https://github.com/domsson/fakesteak#fakesteak), [Reddit](https://www.reddit.com/r/unixporn/comments/ju62xa/oc_fakesteak_yet_another_matrix_rain_generator/) in C (31)
+- [amstrad/oh-my-matrix](https://github.com/amstrad/oh-my-matrix) - [Demo](https://github.com/amstrad/oh-my-matrix/blob/master/oh-my-matrix.gif) in Python (19)
+- [b166erbot/matrix](https://github.com/b166erbot/matrix) in Python3 (18)
+- [meganehouser/rustmatrix](https://github.com/meganehouser/rustmatrix) - [Demo](https://github.com/meganehouser/rustmatrix#rustmatrix) in Rust (17)
 - [txstc55/matrix_viewer](https://github.com/txstc55/matrix_viewer) - [Demo](https://github.com/txstc55/matrix_viewer#matrix-viewer) in C++ (15)
+- [henriquebastos/the-matrix-rain](https://github.com/henriquebastos/the-matrix-rain) - [Demo](https://github.com/henriquebastos/the-matrix-rain#the-matrix-rain) in Python (8)
 - [aguegu/greenrain](https://github.com/aguegu/greenrain) - [Demo](https://github.com/aguegu/greenrain#greenrain) in C++ (6)
 - [JaydenL33/cmatrix2.0](https://github.com/JaydenL33/cmatrix2.0) in C (3)
+- [kevinelong/rain](https://github.com/kevinelong/rain) [Demo](https://github.com/kevinelong/rain#rain), [Youtube](https://www.youtube.com/watch?v=w4mc2xnIKBY), [Reddit](https://www.reddit.com/r/Simulated/comments/l49svb/rain_simulation_on_amber_terminal_window_that_is/) - in Python (3)
 - [stefrush/enterthematrix](https://github.com/stefrush/enterthematrix) - [Demo](https://github.com/stefrush/enterthematrix#enterthematrix) in Python (2)
 - [Shizcow/smatrix](https://github.com/Shizcow/smatrix) in Rust (1)
 - [gurushida/matrixmirror](https://github.com/gurushida/matrixmirror) - [Demo](https://github.com/gurushida/matrixmirror#matrixmirror) in Objective-C (0)
@@ -209,14 +221,14 @@ Related tags in GitHub
 
 ## The Matrix rains in browsers
 
-- [tidwall/digitalrain](https://github.com/tidwall/digitalrain) - [Demo](https://tidwall.com/digitalrain/) in HTML5 Canvas (356)
-- [emilyxxie/green_rain](https://github.com/emilyxxie/green_rain) - [Demo](http://xie-emily.com/generative_art/green_rain.html) in HTML5 Canvas (233)
-- [winterbe/github-matrix](https://github.com/winterbe/github-matrix) - [Demo](https://winterbe.com/projects/github-matrix/) in HTML5 Canvas (191)
-- [Rezmason/matrix](https://github.com/Rezmason/matrix) - [Demo](https://rezmason.github.io/matrix/), [HN](https://news.ycombinator.com/item?id=28446761) in HTML5 Canvas (144)
-- [neilcarpenter/Matrix-code-rain](https://github.com/neilcarpenter/Matrix-code-rain) - [Demo](http://neilcarpenter.com/demos/canvas/matrix/) in HTML5 Canvas (92)
-- [syropian/HTML5-Matrix-Code-Rain](https://github.com/syropian/HTML5-Matrix-Code-Rain) - [Demo](https://codepen.io/syropian/pen/bLzAi) in HTML5 Canvas (31)
-- [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (25)
-- [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (18)
+- [tidwall/digitalrain](https://github.com/tidwall/digitalrain) - [Demo](https://tidwall.com/digitalrain/) in HTML5 Canvas (358)
+- [emilyxxie/green_rain](https://github.com/emilyxxie/green_rain) - [Demo](http://xie-emily.com/generative_art/green_rain.html) in HTML5 Canvas (238)
+- [winterbe/github-matrix](https://github.com/winterbe/github-matrix) - [Demo](https://winterbe.com/projects/github-matrix/) in HTML5 Canvas (192)
+- [Rezmason/matrix](https://github.com/Rezmason/matrix) - [Demo](https://rezmason.github.io/matrix/), [HN](https://news.ycombinator.com/item?id=28446761) in HTML5 Canvas (176)
+- [neilcarpenter/Matrix-code-rain](https://github.com/neilcarpenter/Matrix-code-rain) - [Demo](http://neilcarpenter.com/demos/canvas/matrix/) in HTML5 Canvas (96)
+- [syropian/HTML5-Matrix-Code-Rain](https://github.com/syropian/HTML5-Matrix-Code-Rain) - [Demo](https://codepen.io/syropian/pen/bLzAi) in HTML5 Canvas (33)
+- [raphaklaus/matrix-fx](https://github.com/raphaklaus/matrix-fx) - [Demo](https://raphaklaus.com/matrix-fx/) in CSS3 (27)
+- [pazdera/matrix-vr](https://github.com/pazdera/matrix-vr) - [Demo](https://radek.io/matrix-vr/) in WebVR (20)
 - [lhartikk/BtcTxMatrix](https://github.com/lhartikk/BtcTxMatrix) - [Demo](http://lhartikk.github.io/btctxmatrix/) in HTML5 Canvas (13)
 - [anderspitman/redpill](https://github.com/anderspitman/redpill) - [Demo](https://anderspitman.net/apps/redpill/) in HTML5 Canvas (9)
 - [pmutua/Matrix-Rain](https://github.com/pmutua/Matrix-Rain) - [Demo](https://pmutua.github.io/Matrix-Rain/) in HTML5 Canvas (2)
@@ -227,7 +239,7 @@ Related tags in GitHub
 
 ## Others
 
-- [winterbe/github-matrix-screensaver](https://github.com/winterbe/github-matrix-screensaver) (github-matrix/WebSaver?) in JavaScript (481)
+- [winterbe/github-matrix-screensaver](https://github.com/winterbe/github-matrix-screensaver) (github-matrix/WebSaver?) in JavaScript (492)
 - [tremby/Kaleidoscope-LEDEffect-DigitalRain](https://github.com/tremby/Kaleidoscope-LEDEffect-DigitalRain) in Kaleidoscope? (22)
 - [nathanchere/MatrixSaver](https://github.com/nathanchere/MatrixSaver) in C# (22)
 - [sapandang/Matrix-Rain-Live-Wallpaper](https://github.com/sapandang/Matrix-Rain-Live-Wallpaper) in Android Wallpaper (15)
