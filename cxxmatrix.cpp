@@ -1168,9 +1168,11 @@ private:
   }
 
   struct glyph_definition_t {
+    static constexpr int height = 7;
+
     char32_t c;
     int w;
-    int lines[7];
+    int lines[height];
 
     bool operator()(int x, int y) const {
       return lines[y] & (1 << x);
@@ -1197,6 +1199,7 @@ private:
     int min_width = 0; // 表示に必要な最低幅
 
     int render_width = 0; // 全体の表示幅
+    int render_height = glyph_definition_t::height;
     int min_progress = 0; // 最小の文字表示幅
 
   private:
@@ -1228,7 +1231,7 @@ private:
 
         glyph_t g;
         g.def = glyph_data(c);
-        g.h = 7;
+        g.h = glyph_definition_t::height;
         g.w = g.def ? g.def->w : 5;
         g.render_width = g.w + 1;
 
@@ -1239,11 +1242,13 @@ private:
     }
 
     void adjust_width(int cols) {
-      // Adjust rendering width
-      int rest = cols - this->min_width - 4;
+      // Adjust rendering width of each glyph
+      int rest = cols - this->min_width - 2;
       this->render_width = this->min_width;
-      for (glyph_t& g: glyphs)
-        g.render_width = g.w + 1;
+
+      // No need to adjust the widths of glyphs when there are no glyphs
+      if (glyphs.empty()) return;
+
       while (rest > 0) {
         int min_progress = glyphs[0].render_width;
         int min_progress_count = 0;
@@ -1373,7 +1378,7 @@ private:
       message.adjust_width(cols);
       nchar = message.glyphs.size();
       display_width = message.render_width + message.min_progress;
-      display_height = message.glyphs[0].h;
+      display_height = message.render_height;
       break;
     case 1:
     case 2:
